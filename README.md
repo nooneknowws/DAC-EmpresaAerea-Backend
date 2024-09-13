@@ -21,3 +21,24 @@ Após isso você deve conferir se estão adicionadas ao PATH nas variaveis de am
 
 1. `npm install`
 2. Demais comandos...
+
+## Requisitos Mínimos para Entrega e Defesa
+- **Front-end**:
+  - Implementado em **Angular + TypeScript**
+  - Interface visual bem elaborada
+  - **Acessa o API Gateway** via **HTTP-REST**
+  - **Não** utiliza **Local Storage** ou **json-server** para armazenamento
+
+- **Back-end**:
+  - Implementado em **Spring Boot** (Java ou Kotlin)
+  - Arquitetura baseada em **microsserviços**
+  - Cada microsserviço usa um banco de dados distinto
+  - Login e cadastros básicos funcionando completamente
+  - Implementação completa de uma **SAGA** para gerenciamento de transações distribuídas
+  - **Mensageria** via **RabbitMQ**
+
+- **API Gateway**:
+  - Implementado um **API Gateway básico** para comunicação entre frontend e backend
+
+- **Outros requisitos**:
+  - Interface de usuário com design refinado (não pode ser HTML puro ou interface mal projetada)
