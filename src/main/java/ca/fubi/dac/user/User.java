@@ -1,4 +1,4 @@
-package ca.fubi.user;
+package ca.fubi.dac.user;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

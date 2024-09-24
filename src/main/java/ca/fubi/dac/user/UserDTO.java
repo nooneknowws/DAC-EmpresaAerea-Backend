@@ -1,4 +1,4 @@
-package ca.fubi.user;
+package ca.fubi.dac.user;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

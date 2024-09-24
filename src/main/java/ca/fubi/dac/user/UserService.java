@@ -1,5 +1,6 @@
-package ca.fubi.user;
+package ca.fubi.dac.user;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import ca.fubi.dac.auth.dto.CreateUserDTO;
@@ -10,6 +11,7 @@ import java.util.Optional;
 @Service
 public class UserService {
 
+	@Autowired
 	private final UserRepository userRepository;
 
 	public UserService(UserRepository userRepository) {
