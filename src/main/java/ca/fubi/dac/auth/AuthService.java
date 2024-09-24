@@ -24,11 +24,15 @@ public class AuthService {
 
 	public AuthTokenDTO authenticateUser(LoginUserDTO loginUserDTO) {
 		Key key = Keys.hmacShaKeyFor(secret.getBytes());
-		String token = Jwts.builder().setSubject(loginUserDTO.email()).setIssuedAt(new Date())
+		String token = Jwts.builder()
+				.setSubject(loginUserDTO.email())
+				.setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 1 dia
 				.signWith(key).compact();
-		return new AuthTokenDTO(token,
-				userService.getUserByEmail(loginUserDTO.email()).map(UserDTO::new).orElseThrow());
+		UserDTO user = userService.getUserByEmail(loginUserDTO.email()).get();
+		System.out.println(user.endereco().getLogradouro());
+		return new AuthTokenDTO(token, user);
+				
 	}
 
 	public AuthTokenDTO generateToken(UserDTO userDTO) {

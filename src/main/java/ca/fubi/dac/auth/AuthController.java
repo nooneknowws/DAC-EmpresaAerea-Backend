@@ -3,6 +3,7 @@ package ca.fubi.dac.auth;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,6 +14,7 @@ import ca.fubi.dac.auth.dto.LoginUserDTO;
 import ca.fubi.dac.user.UserService;
 import ca.fubi.dac.auth.dto.CreateUserDTO;
 
+@CrossOrigin(origins = "http://localhost:30053")
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
