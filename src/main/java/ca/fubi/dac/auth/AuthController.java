@@ -14,7 +14,7 @@ import ca.fubi.dac.auth.dto.LoginUserDTO;
 import ca.fubi.dac.user.UserService;
 import ca.fubi.dac.auth.dto.CreateUserDTO;
 
-@CrossOrigin(origins = "http://localhost:30053")
+@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
