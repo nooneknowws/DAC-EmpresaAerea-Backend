@@ -13,10 +13,56 @@ app.use( bodyParser.urlencoded({ extended: false }))
 
 app.use ( bodyParser.json() );
 
+const authServiceProxy = httpProxy('http://localhost:5000', {
+    proxyReqBodyDecorator: function (bodyContent, srcReq) {
+        try {
+            retBody = {};
+            retBody.login = bodyContent.login;
+            retBody.senha = bodyContent.senha;
+            bodyContent = retBody;
+            console.log(retBody)
+        }
+        catch(e) {
+            console.log( '- ERRO: ' + e);
+        }
+        return bodyContent
+    },
+    proxyReqOptDecorator: function (proxyReqOpts, srcReq){
+        proxyReqOpts.headers['Content-Type'] = 'application/json';
+        proxyReqOpts.method = 'POST';
+        return proxyReqOpts;
 
-const voosServiceProxy = httpProxy('http://localhost:5000');
-const reservasServiceProxy = httpProxy('http://localhost:5001');
-const clientesServiceProxy = httpProxy('http://localhost:5002');
+    },
+    userResDecorator: function(proxyRes, proxyResData, userReq, userRes) {
+        console.log("Status Code do Serviço Autenticação:", proxyRes.statusCode);
+        console.log("Resposta do Serviço Autenticação:", proxyResData.toString());
+    
+        if (proxyRes.statusCode == 200) {
+            try {
+                const str = Buffer.from(proxyResData).toString('utf-8');
+                console.log("Dados JSON convertidos:", str); // Debug do JSON
+                const objBody = JSON.parse(str);
+                const id = objBody.id;
+                const token = jwt.sign({ id }, process.env.SECRET, {
+                    expiresIn: 300 // expira em 5 minutos
+                });
+                userRes.status(200);
+                return { auth: true, token: token, data: objBody };
+            } catch (error) {
+                console.error("Erro ao manipular dados JSON:", error);
+                userRes.status(500);
+                return { message: "Erro interno no servidor" };
+            }
+        } else {
+            userRes.status(401);
+            return { message: 'Login inválido!' };
+        }
+    }
+    
+});
+const voosServiceProxy = httpProxy('http://localhost:5001');
+const reservasServiceProxy = httpProxy('http://localhost:5002');
+const clientesServiceProxy = httpProxy('http://localhost:5003');
 
 function verifyJWT(req, res, next) {
     const token = req.headers['x-access-token'];
@@ -32,16 +78,8 @@ function verifyJWT(req, res, next) {
     });
 }
 
-app.post('/login', express.urlencoded({ extended: false }), (req, res, next) => {
-    //isso aqui tem q ser feito invocando o serviço de autenticação futuramente
-    if (req.body.user === 'admin' && req.body.password === 'admin') {
-        const id = 1;//isso aqui viria do serviço
-        const token = jwt.sign({ id }, process.env.SECRET, {
-            expiresIn: 300
-        });
-        return res.json({ auth: true, token: token});
-    }
-    res.status(500).json({message: 'Login inválido!'})
+app.post('/login', (req, res, next) => {
+    authServiceProxy(req, res, next);
 })
 
 app.post('/logout', function(req, res){
