@@ -1,15 +1,48 @@
 # DAC-EmpresaAerea-Backend
 
+  
+
 ## Clonar o respositório.
+
 `git clone + url`
 
+  
+  
+  
+
+## USO DO DOCKER - IMPORTANTE
+
+### Criar um dockerfile  dentro da pasta do PROJETO do microserviço ex:
+```dockerfile
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY build/libs/*.jar app.jar
+# porta usada para a chamada dos endpoints, por padrão o AUTH usa a 5000, usar a partir dai
+EXPOSE 5000
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+### Abrir um console dentro da pasta do projeto e executar os seguintes comandos em ordem
+```bash 
+./gradlew build
+```
+
+```bash
+docker build -t nome-da-imagem .
+```
+```bash
+docker run -d -p 500X:500X nome-da-imagem
+```
+
+
+
+
 //colocar o numero e link das versões
-+ Versão ? do [Node](). 
-+ Versão ? do [npm]().
-+ Versão ? do [Java](). 
-+ Versão ? do [Springboot]().
-+ Versão ? do [Angular]().
-+ Versão ? do [TS](). 
++ Versão 20.17.0 do [Node](). 
++ Versão 10.8.2 do [npm]().
++ Versão 17 do [Java](). 
++ Versão 4.4.26.0 do [Springboot]().
++ Versão 18.2.4 do [Angular]().
++ Versão 5.6.3 do [TS](). 
 
 Após isso você deve conferir se estão adicionadas ao PATH nas variaveis de ambiente.
 
