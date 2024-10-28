@@ -1,5 +1,9 @@
 {
-  "funcionarios": [],
+  "funcionarios": [
+    {"id": "1", "cpf": "12345678910", "nome": "Funcionario", "email": "funcionario@mail.com", "senha": "password",
+"endereco": { "cep": 83562006, "logradouro": "Rua Alcides Gomes da Silva","numero": 123,"complemento": "123","bairro": "Santa Maria","cidade": "Itaperuçu","estado": "PR" },
+"matricula": "123456789"}
+  ],
   "clientes": [
     {
       "id": "f4ea",
