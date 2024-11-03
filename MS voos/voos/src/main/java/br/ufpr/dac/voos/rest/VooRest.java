@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import br.ufpr.dac.voos.models.Voo;
 import br.ufpr.dac.voos.models.Aeroporto;
@@ -19,6 +20,12 @@ public class VooRest {
     public List<Voo> getVoos() {
         return voos;
     }
+
+    @GetMapping("/voos/{id}")
+    public Voo getVoo(@PathVariable("id") String id) {
+        return voos.stream().filter(v -> v.getId().equals(id)).findAny().orElse(null);
+    }
+    
 
     static {
         voos.add(new Voo("1", "Voo 1", LocalDateTime.now(), new Aeroporto("1", "Aeroporto 1", "Cidade 1", "Estado 1", "Pais 1"), new Aeroporto("2", "Aeroporto 2", "Cidade 2", "Estado 2", "Pais 2"), 100.0, 100, 0, "Ativo"));
