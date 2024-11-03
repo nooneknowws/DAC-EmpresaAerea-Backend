@@ -1,4 +1,4 @@
-package main.java.com.voos.ms_voos;
+package br.ufpr.dac.voos.enums;
 
 public enum EstadosBrasil {
     AC("AC"),
@@ -39,4 +39,3 @@ public enum EstadosBrasil {
         return sigla;
     }
 }
-

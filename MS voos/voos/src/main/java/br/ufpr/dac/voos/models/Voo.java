@@ -1,26 +1,27 @@
-package main.java.com.voos.ms_voos;
+package br.ufpr.dac.voos.models;
 
-public class VooModel {
+import java.time.LocalDateTime;
+
+
+public class Voo {
     public String id;
     public String codigoVoo;
-    public DateTime dataHoraPartida;
-    public DateTime dataHoraChegada; // ?
-    public String origem; // TODO: TROCAR PELA CLASSE DE AEROPORTO
-    public String destino; // TODO: TROCAR PELA CLASSE DE AEROPORTO
+    public LocalDateTime dataHoraPartida;
+    public Aeroporto origem;
+    public Aeroporto destino; 
     public double valorPassagem;
     public int quantidadeAssentos;
     public int quantidadePassageiros;
     public String status;
 
-    public VooModel() {
+    public Voo() {
         super();
     }
 
-    public VooModel(String id, String codigoVoo, DateTime dataHoraPartida, DateTime dataHoraChegada, String origem, String destino, double valorPassagem, int quantidadeAssentos, int quantidadePassageiros, String status) {
+    public Voo(String id, String codigoVoo, LocalDateTime dataHoraPartida, Aeroporto origem, Aeroporto destino, double valorPassagem, int quantidadeAssentos, int quantidadePassageiros, String status) {
         this.id = id;
         this.codigoVoo = codigoVoo;
         this.dataHoraPartida = dataHoraPartida;
-        this.dataHoraChegada = dataHoraChegada;
         this.origem = origem;
         this.destino = destino;
         this.valorPassagem = valorPassagem;
@@ -45,35 +46,28 @@ public class VooModel {
         this.codigoVoo = codigoVoo;
     }
 
-    public DateTime getDataHoraPartida() {
+    public LocalDateTime getDataHoraPartida() {
         return dataHoraPartida;
     }
 
-    public void setDataHoraPartida(DateTime dataHoraPartida) {
+    public void setDataHoraPartida(LocalDateTime dataHoraPartida) {
         this.dataHoraPartida = dataHoraPartida;
     }
 
-    public DateTime getDataHoraChegada() {
-        return dataHoraChegada;
-    }
 
-    public void setDataHoraChegada(DateTime dataHoraChegada) {
-        this.dataHoraChegada = dataHoraChegada;
-    }
-
-    public String getOrigem() {
+    public Aeroporto getOrigem() {
         return origem;
     }
 
-    public void setOrigem(String origem) {
+    public void setOrigem(Aeroporto origem) {
         this.origem = origem;
     }
 
-    public String getDestino() {
+    public Aeroporto getDestino() {
         return destino;
     }
 
-    public void setDestino(String destino) {
+    public void setDestino(Aeroporto destino) {
         this.destino = destino;
     }
 

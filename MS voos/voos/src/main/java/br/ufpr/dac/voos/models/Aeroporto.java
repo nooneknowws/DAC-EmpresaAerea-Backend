@@ -1,17 +1,17 @@
-package main.java.com.voos.ms_voos;
+package br.ufpr.dac.voos.models;
 
-public class AeroportoModel {
+public class Aeroporto {
     public String id;
     public String nome;
     public String cidade;
     public String estado;
     public String pais;
 
-    public AeroportoModel() {
+    public Aeroporto() {
         super();
     }
 
-    public AeroportoModel(String id, String nome, String cidade, String estado, String pais) {
+    public Aeroporto(String id, String nome, String cidade, String estado, String pais) {
         this.id = id;
         this.nome = nome;
         this.cidade = cidade;

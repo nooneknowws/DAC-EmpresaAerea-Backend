@@ -8,10 +8,10 @@
 		<version>3.3.5</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.voos</groupId>
-	<artifactId>ms-voos</artifactId>
+	<groupId>br.ufpr.dac</groupId>
+	<artifactId>voos</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>ms-voos</name>
+	<name>voos</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
 	<licenses>

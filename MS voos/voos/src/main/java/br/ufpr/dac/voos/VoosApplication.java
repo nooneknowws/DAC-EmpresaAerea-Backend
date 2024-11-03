@@ -1,13 +1,13 @@
-package com.voos.ms_voos;
+package br.ufpr.dac.voos;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class MsVoosApplication {
+public class VoosApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(MsVoosApplication.class, args);
+		SpringApplication.run(VoosApplication.class, args);
 	}
 
 }
