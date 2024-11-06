@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.time.LocalDateTime;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import br.ufpr.dac.voos.models.Voo;
 import br.ufpr.dac.voos.models.Aeroporto;
+import org.springframework.web.bind.annotation.PutMapping;
+
 
 
 @CrossOrigin
@@ -31,18 +34,47 @@ public class VooRest {
     }
 
     @PostMapping("/voos")
-    public Voo inserirVoo(@RequestBody Voo voo) {
+    public Voo inserirVoo(@RequestBody Voo vooParam) {
         
         Voo novoVoo = listaVoos.stream().max(Comparator.comparing(Voo::getId)).orElse(null);
 
         if (novoVoo == null) {
-            voo.setId("1");
+            vooParam.setId("1");
         } else {
-            voo.setId(novoVoo.getId() + 1);
-            listaVoos.add(voo);
+            vooParam.setId(novoVoo.getId() + 1);
+            listaVoos.add(vooParam);
         }
         
-        return voo;
+        return vooParam;
+    }
+
+    @PutMapping("voos/{id}")
+    public Voo editarVoo(@PathVariable("id") String id, @RequestBody Voo vooParam) {
+        Voo vooEditado = listaVoos.stream().filter(v -> v.getId().equals(id)).findAny().orElse(null);
+
+        if (vooEditado != null) {
+            vooEditado.setCodigoVoo(vooParam.getCodigoVoo());
+            vooEditado.setDataHoraPartida(vooParam.getDataHoraPartida());
+            vooEditado.setOrigem(vooParam.getOrigem());
+            vooEditado.setDestino(vooParam.getDestino());
+            vooEditado.setValorPassagem(vooParam.getValorPassagem());
+            vooEditado.setQuantidadeAssentos(vooParam.getQuantidadeAssentos());
+            vooEditado.setQuantidadePassageiros(vooParam.getQuantidadePassageiros());
+            vooEditado.setStatus(vooParam.getStatus());
+        }
+        
+        return vooEditado;
+    }
+
+    @DeleteMapping("/voos/{id}")
+    public Voo removerVoo(@PathVariable("id") String id) {
+        Voo vooRemovido = listaVoos.stream().filter(v -> v.getId().equals(id)).findAny().orElse(null);
+
+        if (vooRemovido != null) {
+            listaVoos.removeIf(v -> v.getId().equals(id));
+        }
+        
+        return vooRemovido;
     }
     
 
