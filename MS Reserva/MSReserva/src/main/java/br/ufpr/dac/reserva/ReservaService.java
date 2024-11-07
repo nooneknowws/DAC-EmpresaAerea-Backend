@@ -2,6 +2,12 @@ package br.ufpr.dac.reserva;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ReservaService {
@@ -9,40 +15,61 @@ public class ReservaService {
     @Autowired
     private ReservaRepository reservaRepository;
 
-    public ReservaDTO toDTO(Reserva reserva) {
-        ReservaDTO dto = new ReservaDTO();
-        dto.setId(reserva.getId());
-        dto.setDataHora(reserva.getDataHora());
-        dto.setOrigem(reserva.getOrigem());
-        dto.setDestino(reserva.getDestino());
-        dto.setValor(reserva.getValor());
-        dto.setMilhas(reserva.getMilhas());
-        dto.setStatus(reserva.getStatus().name());
-        dto.setVooId(reserva.getVooId());
-        dto.setClienteId(reserva.getClienteId());
-        return dto;
-    }
-
-    public Reserva toEntity(ReservaDTO dto) {
+    @Transactional
+    public Reserva criarReserva(ReservaDTO reservaDTO) {
         Reserva reserva = new Reserva();
-        reserva.setId(dto.getId());
-        reserva.setDataHora(dto.getDataHora());
-        reserva.setOrigem(dto.getOrigem());
-        reserva.setDestino(dto.getDestino());
-        reserva.setValor(dto.getValor());
-        reserva.setMilhas(dto.getMilhas());
-        reserva.setStatus(StatusReserva.valueOf(dto.getStatus()));
-        reserva.setVooId(dto.getVooId());
-        reserva.setClienteId(dto.getClienteId());
+        reserva.setDataHora(LocalDateTime.now());
+        reserva.setOrigem(reservaDTO.getOrigem());
+        reserva.setDestino(reservaDTO.getDestino());
+        reserva.setValor(reservaDTO.getValor());
+        reserva.setMilhas(reservaDTO.getMilhas());
+        reserva.setStatus(StatusReserva.PENDENTE);
+        reserva.setVooId(reservaDTO.getVooId());
+        reserva.setClienteId(reservaDTO.getClienteId());
+
+        String codigoReserva = gerarCodigoReserva();
+        reserva.setCodigoReserva(codigoReserva);
+
+        reservaRepository.save(reserva);
         return reserva;
     }
 
-    public Reserva save(Reserva reserva) {
-        return reservaRepository.save(reserva);
+    public Optional<Reserva> consultarReserva(Long id) {
+        return reservaRepository.findById(id);
     }
 
-    public Reserva findById(Long id) throws Exception {
-        return reservaRepository.findById(id)
-                .orElseThrow(() -> new Exception("Reserva não encontrada"));
+    @Transactional
+    public Reserva atualizarStatusReserva(Long reservaId, StatusReserva novoStatus) {
+        Reserva reserva = reservaRepository.findById(reservaId)
+                .orElseThrow(() -> new RuntimeException("Reserva não encontrada"));
+
+        reserva.adicionarHistoricoAlteracaoEstado(reserva.getStatus(), novoStatus);
+        reserva.setStatus(novoStatus);
+        reservaRepository.save(reserva);
+        return reserva;
+    }
+
+    @Transactional
+    public Reserva cancelarReserva(Long reservaId) {
+        return atualizarStatusReserva(reservaId, StatusReserva.CANCELADO);
+    }
+
+    @Transactional
+    public Reserva realizarCheckIn(Long reservaId) {
+        return atualizarStatusReserva(reservaId, StatusReserva.EMBARCADO);
+    }
+
+    public List<Reserva> listarReservasPorCliente(Long clienteId) {
+        return reservaRepository.findByClienteId(clienteId);
+    }
+
+    public List<Reserva> listarReservasPorVoo(Long vooId) {
+        return reservaRepository.findByVooId(vooId);
+    }
+    
+    private String gerarCodigoReserva() {
+        UUID uuid = UUID.randomUUID();
+        String codigo = uuid.toString().substring(0, 3).toUpperCase() + "-" + uuid.toString().substring(3, 6);
+        return codigo;
     }
 }

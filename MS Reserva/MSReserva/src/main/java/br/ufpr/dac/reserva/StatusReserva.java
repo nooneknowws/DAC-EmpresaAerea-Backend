@@ -1,7 +1,10 @@
 package br.ufpr.dac.reserva;
 
 public enum StatusReserva {
-	PENDENTE("Pendente"), FINALIZADO("Finalizada"), CANCELADO("Cancelada"), EMBARCADO("Embarcado"),
+	PENDENTE("Pendente"), 
+	FINALIZADO("Finalizada"), 
+	CANCELADO("Cancelada"), 
+	EMBARCADO("Embarcado"),
 	CONFIRMADO("Confirmado");
 
 	private final String descricao;
