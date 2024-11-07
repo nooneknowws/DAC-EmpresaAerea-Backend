@@ -31,3 +31,18 @@ build/
 
 ### VS Code ###
 .vscode/
+.metadata/.lock
+.metadata/.log
+.metadata/.plugins/org.eclipse.m2e.logback/0.log
+.metadata/.plugins/org.eclipse.m2e.logback/logback.2.6.1.20240411-1122.xml
+.metadata/version.ini
+.metadata/.plugins/org.eclipse.buildship.core/gradle/versions.json
+.metadata/.plugins/org.eclipse.core.resources/.projects/.org.eclipse.egit.core.cmp/.location
+.metadata/.plugins/org.eclipse.core.resources/.root/.indexes/properties.index
+.metadata/.plugins/org.eclipse.core.resources/.root/.markers.snap
+.metadata/.plugins/org.eclipse.core.resources/.safetable/org.eclipse.core.resources
+.metadata/.plugins/org.eclipse.core.resources/0.snap
+.metadata/.plugins/org.eclipse.jdt.core/variablesAndContainers.dat
+.metadata/.plugins/org.eclipse.m2e.core/workspaceState.ser
+.metadata/.plugins/org.eclipse.ui.workbench/workingsets.xml
+/.metadata/
