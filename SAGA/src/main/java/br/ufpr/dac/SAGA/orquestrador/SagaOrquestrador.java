@@ -1,11 +1,15 @@
 package br.ufpr.dac.SAGA.orquestrador;
 
+import java.io.IOException;
 import java.util.*;
-
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.Service;
+
+import com.rabbitmq.client.Channel;
+
+import br.ufpr.dac.SAGA.models.dto.LoginDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,48 +21,43 @@ public class SagaOrquestrador {
     @Autowired
     private AmqpTemplate rabbitTemplate;
 
-    // This will handle the login request from the API Gateway
-    public void startSaga(String email, String password) {
-        // Step 1: Send message to MS Clientes to verify client
-        Map<String, String> clientCheckMessage = new HashMap<>();
-        clientCheckMessage.put("email", email);  // Password should not be part of client verification
-        rabbitTemplate.convertAndSend("saga-exchange", "client.verification", clientCheckMessage);
+    @RabbitListener(queues = "auth.request", ackMode = "MANUAL")
+    public void handleAuthSaga(LoginDTO loginDTO, Message message, Channel channel) {
+        try {
+            logger.info("Received login request from 'auth.request' queue for email: {}", loginDTO.getEmail());
+            rabbitTemplate.convertAndSend("saga-exchange", "client.verification", loginDTO);
+            logger.info("Sent verification request to saga-exchange with routing key 'client.verification'");
 
-        logger.info("Client verification request sent for email: {}", email);
-    }
-
-    @RabbitListener(queues = "client.verification.response")
-    public void handleClientVerificationResponse(Map<String, Object> response) {
-        boolean clientExists = (boolean) response.get("clientExists");
-
-        if (clientExists) {
-            // Step 2: If client exists, send authentication request to MS Auth
-            String email = response.get("email").toString();
-            String id = response.get("id").toString();  // Assuming the id might be useful later
-            Map<String, String> authRequestMessage = new HashMap<>();
-            authRequestMessage.put("email", email);
-            rabbitTemplate.convertAndSend("saga-exchange", "auth.request", authRequestMessage);
-
-            logger.info("Client exists. Proceeding with authentication for email: {}", email);
-        } else {
-            // Handle client not found scenario (respond to API Gateway)
-            String errorMessage = (String) response.get("message");
-            logger.error("Client verification failed: {}", errorMessage);
+            
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        } catch (Exception e) {
+            logger.error("Error handling auth saga", e);
+            try {
+                
+                channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+            } catch (IOException ioException) {
+                logger.error("Error during message rejection", ioException);
+            }
         }
     }
 
-    @RabbitListener(queues = "auth.response")
-    public void handleAuthResponse(Map<String, Object> response) {
-        boolean authSuccess = (boolean) response.get("authSuccess");
+    @RabbitListener(queues = "client.verification.response", ackMode = "MANUAL")
+    public void handleClientVerificationResponse(Map<String, String> response, Message message, Channel channel) {
+        try {
+            logger.info("Received client verification response for email: {} with status: {}", response.get("email"), response.get("status"));
+            rabbitTemplate.convertAndSend("saga-exchange", "auth.response", response);
+            logger.info("Sent response to saga-exchange with routing key 'auth.response'");
 
-        if (authSuccess) {
-            // Respond back to API Gateway with authentication success and token
-            String token = (String) response.get("token");
-            logger.info("Authentication successful. Token: {}", token);
-        } else {
-            // Respond back to API Gateway with authentication failure
-            String errorMessage = (String) response.get("errorMessage");
-            logger.error("Authentication failed: {}", errorMessage);
+            
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        } catch (Exception e) {
+            logger.error("Error handling client verification response", e);
+            try {
+                
+                channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+            } catch (IOException ioException) {
+                logger.error("Error during message rejection", ioException);
+            }
         }
     }
 }

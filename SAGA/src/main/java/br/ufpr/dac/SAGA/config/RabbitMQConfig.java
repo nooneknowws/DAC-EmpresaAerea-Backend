@@ -15,21 +15,36 @@ public class RabbitMQConfig {
 
     @Bean
     Queue clientVerificationQueue() {
-        return new Queue("client.verification");
+    	return QueueBuilder.durable("client.verification")
+                .ttl(30000)  // TTL of 1 minute
+                .build();
     }
 
     @Bean
     Queue authRequestQueue() {
-        return new Queue("auth.request");
+    	return QueueBuilder.durable("auth.request")
+                .ttl(30000)  // TTL of 1 minute
+                .build();
     }
 
     @Bean
     Queue authResponseQueue() {
-        return new Queue("auth.response");
+    	return QueueBuilder.durable("auth.response")
+                .ttl(30000)  // TTL of 1 minute
+                .build();
+    }
+
+    @Bean
+    Queue authReplyQueue() {
+    	return QueueBuilder.durable("auth.reply")
+                .ttl(30000)  // TTL of 1 minute
+                .build();
     }
     @Bean
     Queue clientResponseQueue() {
-        return new Queue("client.verification.response");
+        return QueueBuilder.durable("client.verification.response")
+                .ttl(30000)  // TTL of 1 minute
+                .build();
     }
 
 
@@ -40,7 +55,7 @@ public class RabbitMQConfig {
 
     @Bean
     Binding clientVerificationBinding(@Qualifier("clientVerificationQueue") Queue clientVerificationQueue, DirectExchange exchange) {
-        return BindingBuilder.bind(clientVerificationQueue).to(exchange).with("client.verify");
+        return BindingBuilder.bind(clientVerificationQueue).to(exchange).with("client.verification");
     }
 
     @Bean
@@ -53,8 +68,12 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(authResponseQueue).to(exchange).with("auth.response");
     }
     @Bean
+    Binding authReplyBinding(@Qualifier("authReplyQueue") Queue authReplyQueue, DirectExchange exchange) {
+        return BindingBuilder.bind(authReplyQueue).to(exchange).with("auth.reply");
+    }
+    @Bean
     Binding clientResponseBinding(@Qualifier("clientResponseQueue") Queue clientResponseQueue, DirectExchange exchange) {
-        return BindingBuilder.bind(clientResponseQueue).to(exchange).with("auth.response");
+        return BindingBuilder.bind(clientResponseQueue).to(exchange).with("client.verification.response");
     }
 
     MessageConverter jsonMessageConverter() {

@@ -1,107 +1,161 @@
 require("dotenv-safe").config();
-const jwt = require('jsonwebtoken');
-var http = require('http');
-const express = require('express');
-const httpProxy = require('express-http-proxy')
-const app = express()
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser')
-var logger = require('morgan');
-const helmet = require('helmet');
+const amqp = require("amqplib/callback_api");
+const jwt = require("jsonwebtoken");
+var http = require("http");
+const express = require("express");
+const httpProxy = require("express-http-proxy");
+const app = express();
+var cookieParser = require("cookie-parser");
+var bodyParser = require("body-parser");
+var logger = require("morgan");
+const helmet = require("helmet");
 
-app.use( bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.urlencoded({ extended: false }));
 
-app.use ( bodyParser.json() );
+app.use(bodyParser.json());
 
-const authServiceProxy = httpProxy('http://localhost:5000', {
-    proxyReqBodyDecorator: function (bodyContent, srcReq) {
-        try {
-            retBody = {};
-            retBody.login = bodyContent.login;
-            retBody.senha = bodyContent.senha;
-            bodyContent = retBody;
-            console.log(retBody)
-        }
-        catch(e) {
-            console.log( '- ERRO: ' + e);
-        }
-        return bodyContent
-    },
-    proxyReqOptDecorator: function (proxyReqOpts, srcReq){
-        proxyReqOpts.headers['Content-Type'] = 'application/json';
-        proxyReqOpts.method = 'POST';
-        return proxyReqOpts;
+const authServiceProxy = httpProxy("http://localhost:5000", {
+  proxyReqBodyDecorator: function (bodyContent, srcReq) {
+    try {
+      const loginRequest = {
+        email: bodyContent.email,
+        senha: bodyContent.senha,
+      };
+      console.log("Login request:", loginRequest);
 
-    },
-    userResDecorator: function(proxyRes, proxyResData, userReq, userRes) {
-        console.log("Status Code do Serviço Autenticação:", proxyRes.statusCode);
-        console.log("Resposta do Serviço Autenticação:", proxyResData.toString());
-    
-        if (proxyRes.statusCode == 200) {
-            try {
-                const str = Buffer.from(proxyResData).toString('utf-8');
-                console.log("Dados JSON convertidos:", str); // Debug do JSON
-                const objBody = JSON.parse(str);
-                const id = objBody.id;
-                const token = jwt.sign({ id }, process.env.SECRET, {
-                    expiresIn: 300 // expira em 5 minutos
-                });
-                userRes.status(200);
-                return { auth: true, token: token, data: objBody };
-            } catch (error) {
-                console.error("Erro ao manipular dados JSON:", error);
-                userRes.status(500);
-                return { message: "Erro interno no servidor" };
-            }
-        } else {
-            userRes.status(401);
-            return { message: 'Login inválido!' };
-        }
+      // Send login request to RabbitMQ
+      amqp.connect("amqp://localhost", (err, connection) => {
+        if (err) throw err;
+
+        connection.createChannel((err, channel) => {
+          if (err) throw err;
+
+          const queue = "auth.request";
+
+          channel.assertQueue('auth.request', { 
+            durable: true, 
+            arguments: { 'x-message-ttl': 30000 }  // Set TTL to 30 seconds (30000 ms)
+          });
+          channel.sendToQueue(queue, Buffer.from(JSON.stringify(loginRequest)));
+          console.log("Sent login request to 'auth.request' queue");
+        });
+      });
+
+      return loginRequest; // return the modified body for logging/debugging purposes
+    } catch (e) {
+      console.log("- ERROR: " + e);
     }
-    
-});
-const voosServiceProxy = httpProxy('http://localhost:5001');
-const reservasServiceProxy = httpProxy('http://localhost:5002');
-const clientesServiceProxy = httpProxy('http://localhost:5003');
+    return bodyContent; // fallback in case of error
+  },
+  proxyReqOptDecorator: function (proxyReqOpts, srcReq) {
+    proxyReqOpts.headers["Content-Type"] = "application/json";
+    proxyReqOpts.method = "POST";
+    return proxyReqOpts;
+  },
+  userResDecorator: function (proxyRes, proxyResData, userReq, userRes) {
+    return new Promise((resolve, reject) => {
+      amqp.connect("amqp://localhost", (err, connection) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+  
+        connection.createChannel((err, channel) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+  
+          const queue = "auth.reply";
+  
+          channel.assertQueue('auth.reply', { 
+            durable: true, 
+            arguments: { 'x-message-ttl': 30000 }
+          });
+  
+          console.log("Waiting for messages in %s", queue);
+          channel.consume(queue, (msg) => {
+            if (msg !== null) {
+              const response = JSON.parse(msg.content.toString());
+  
+              if (response.status === "success") {
+                console.log(
+                  `Login successful! Token: ${response.token}, Email: ${response.email}`
+                );
+                userRes.status(200).json({
+                  auth: true,
+                  token: response.token,
+                  email: response.email,
+                  
+                });
+                channel.ack(msg);
+              } else {
+                console.log(`Login failed: ${response.message}`);
+                userRes.status(401).json({ message: "Invalid login!" });
+                channel.ack(msg);
+              }
+  
+              
+  
+              resolve('Message processed');
+            } 
+          });
+        });
+      });
+    }, { noAck: false });
+  }
+  
+  
+  }
+  
+
+);
+const voosServiceProxy = httpProxy("http://localhost:5001");
+const reservasServiceProxy = httpProxy("http://localhost:5002");
+const clientesServiceProxy = httpProxy("http://localhost:5003");
 
 function verifyJWT(req, res, next) {
-    const token = req.headers['x-access-token'];
-    if (!token) 
-        return res.status(401).json({ auth: false, message: 'token não fornecido'});
-    
-    jwt.verify(token, process.env.SECRET, function(err,decoded) {
-        if (err)
-            return res.status(500).jjson({ auth: false, message: 'falha ao autenticar token.' });
+  const token = req.headers["x-access-token"];
+  if (!token)
+    return res
+      .status(401)
+      .json({ auth: false, message: "token não fornecido" });
 
-        req.userId = decoded.id;
-        next();
-    });
+  jwt.verify(token, process.env.SECRET, function (err, decoded) {
+    if (err)
+      return res
+        .status(500)
+        .jjson({ auth: false, message: "falha ao autenticar token." });
+
+    req.userId = decoded.id;
+    next();
+  });
 }
 
-app.post('/login', (req, res, next) => {
-    authServiceProxy(req, res, next);
-})
+app.post("/login", (req, res, next) => {
+  authServiceProxy(req, res, next);
+});
 
-app.post('/logout', function(req, res){
-    //isso aqui só anula o login, bem simples
-    res.json({ auth: false, token: null });
-})
+app.post("/logout", function (req, res) {
+  //isso aqui só anula o login, bem simples
+  res.json({ auth: false, token: null });
+});
 
 //aqui vai os HTTP da vida, que comunica com os MS->
-app.get ('/voos', verifyJWT, (req, res, next) => {
-    voosServiceProxy(req,res,next);
-})
+app.get("/voos", verifyJWT, (req, res, next) => {
+  voosServiceProxy(req, res, next);
+});
 
-app.get ('/reservas', verifyJWT, (req, res, next) => {
-    reservasServiceProxy(req,res,next);
-})
+app.get("/reservas", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, next);
+});
 
-app.get ('/clientes', verifyJWT, (req, res, next) => {
-    clientesServiceProxy(req,res,next);
+app.get("/clientes", verifyJWT, (req, res, next) => {
+  clientesServiceProxy(req, res, next);
 });
 
 //configurações
-app.use(logger('dev'));
+app.use(logger("dev"));
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
