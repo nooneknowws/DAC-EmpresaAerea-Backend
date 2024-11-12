@@ -41,7 +41,9 @@ public class VooRest {
         if (novoVoo == null) {
             vooParam.setId("1");
         } else {
-            vooParam.setId(novoVoo.getId() + 1);
+            Integer novoId = Integer.parseInt(novoVoo.getId());
+            novoId ++;
+            vooParam.setId(novoId.toString());
             listaVoos.add(vooParam);
         }
         
