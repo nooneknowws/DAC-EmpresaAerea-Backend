@@ -33,13 +33,6 @@ public class RabbitMQConfig {
                 .ttl(30000)  // TTL of 1 minute
                 .build();
     }
-
-    @Bean
-    Queue authReplyQueue() {
-    	return QueueBuilder.durable("auth.reply")
-                .ttl(30000)  // TTL of 1 minute
-                .build();
-    }
     @Bean
     Queue clientResponseQueue() {
         return QueueBuilder.durable("client.verification.response")
@@ -66,10 +59,6 @@ public class RabbitMQConfig {
     @Bean
     Binding authResponseBinding(@Qualifier("authResponseQueue") Queue authResponseQueue, DirectExchange exchange) {
         return BindingBuilder.bind(authResponseQueue).to(exchange).with("auth.response");
-    }
-    @Bean
-    Binding authReplyBinding(@Qualifier("authReplyQueue") Queue authReplyQueue, DirectExchange exchange) {
-        return BindingBuilder.bind(authReplyQueue).to(exchange).with("auth.reply");
     }
     @Bean
     Binding clientResponseBinding(@Qualifier("clientResponseQueue") Queue clientResponseQueue, DirectExchange exchange) {

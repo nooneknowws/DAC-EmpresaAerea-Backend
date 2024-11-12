@@ -30,26 +30,54 @@ public class RabbitListenerClientes {
     public void verifyClient(LoginDTO loginDTO, Message message, Channel channel) {
         try {
             logger.info("Received client verification request for email: {}", loginDTO.getEmail());
-            boolean isValid = clienteService.verificarCliente(loginDTO.getEmail(), loginDTO.getSenha());
-
+           
+            LoginDTO clientInfo = clienteService.verificarCliente(loginDTO.getEmail(), loginDTO.getSenha());
+            
+            if (clientInfo == null) {
+                logger.info("Invalid credentials for email: {}", loginDTO.getEmail());
+                sendVerificationResponse("failure", "Invalid credentials", null, message, channel);
+                return;
+            }
+            
             Map<String, String> response = new HashMap<>();
-            response.put("email", loginDTO.getEmail());
-            response.put("status", isValid ? "success" : "failure");
-            response.put("message", isValid ? "Authentication successful" : "Invalid credentials");
+            response.put("id", String.valueOf(clientInfo.getId())); 
+            response.put("email", clientInfo.getEmail());           
+            response.put("perfil", clientInfo.getPerfil());         
+            response.put("status", "success");
+            response.put("message", "Authentication successful");
 
             rabbitTemplate.convertAndSend("saga-exchange", "client.verification.response", response);
             logger.info("Sent client verification response to saga-exchange with routing key 'client.verification.response'");
 
-            // Acknowledge the message after successful processing
+            
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
         } catch (Exception e) {
             logger.error("Error verifying client", e);
             try {
-                // Reject the message and do not requeue
+               
                 channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
             } catch (IOException ioException) {
                 logger.error("Error during message rejection", ioException);
             }
+        }
+    }
+
+    private void sendVerificationResponse(String status, String message, LoginDTO loginDTO, Message messageObj, Channel channel) {
+        Map<String, String> response = new HashMap<>();
+        if (loginDTO != null) {
+            response.put("id", String.valueOf(loginDTO.getId()));
+            response.put("email", loginDTO.getEmail());
+            response.put("perfil", loginDTO.getPerfil());
+        }
+        response.put("status", status);
+        response.put("message", message);
+        
+        rabbitTemplate.convertAndSend("saga-exchange", "client.verification.response", response);
+        logger.info("Sent client verification response to saga-exchange with routing key 'client.verification.response'");
+        try {
+            channel.basicAck(messageObj.getMessageProperties().getDeliveryTag(), false);
+        } catch (IOException e) {
+            logger.error("Error during message acknowledgment", e);
         }
     }
 }

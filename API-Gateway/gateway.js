@@ -13,8 +13,7 @@ const helmet = require("helmet");
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.use(bodyParser.json());
-
-const authServiceProxy = httpProxy("http://localhost:5000", {
+const authServiceProxy = httpProxy("http://localhost:5000/auth/login", {
   proxyReqBodyDecorator: function (bodyContent, srcReq) {
     try {
       const loginRequest = {
@@ -22,30 +21,11 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
         senha: bodyContent.senha,
       };
       console.log("Login request:", loginRequest);
-
-      // Send login request to RabbitMQ
-      amqp.connect("amqp://localhost", (err, connection) => {
-        if (err) throw err;
-
-        connection.createChannel((err, channel) => {
-          if (err) throw err;
-
-          const queue = "auth.request";
-
-          channel.assertQueue('auth.request', { 
-            durable: true, 
-            arguments: { 'x-message-ttl': 30000 }  // Set TTL to 30 seconds (30000 ms)
-          });
-          channel.sendToQueue(queue, Buffer.from(JSON.stringify(loginRequest)));
-          console.log("Sent login request to 'auth.request' queue");
-        });
-      });
-
-      return loginRequest; // return the modified body for logging/debugging purposes
+      return loginRequest; 
     } catch (e) {
       console.log("- ERROR: " + e);
     }
-    return bodyContent; // fallback in case of error
+    return bodyContent; 
   },
   proxyReqOptDecorator: function (proxyReqOpts, srcReq) {
     proxyReqOpts.headers["Content-Type"] = "application/json";
@@ -53,62 +33,29 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
     return proxyReqOpts;
   },
   userResDecorator: function (proxyRes, proxyResData, userReq, userRes) {
-    return new Promise((resolve, reject) => {
-      amqp.connect("amqp://localhost", (err, connection) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-  
-        connection.createChannel((err, channel) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-  
-          const queue = "auth.reply";
-  
-          channel.assertQueue('auth.reply', { 
-            durable: true, 
-            arguments: { 'x-message-ttl': 30000 }
-          });
-  
-          console.log("Waiting for messages in %s", queue);
-          channel.consume(queue, (msg) => {
-            if (msg !== null) {
-              const response = JSON.parse(msg.content.toString());
-  
-              if (response.status === "success") {
-                console.log(
-                  `Login successful! Token: ${response.token}, Email: ${response.email}`
-                );
-                userRes.status(200).json({
-                  auth: true,
-                  token: response.token,
-                  email: response.email,
-                  
-                });
-                channel.ack(msg);
-              } else {
-                console.log(`Login failed: ${response.message}`);
-                userRes.status(401).json({ message: "Invalid login!" });
-                channel.ack(msg);
-              }
-  
-              
-  
-              resolve('Message processed');
-            } 
-          });
-        });
-      });
-    }, { noAck: false });
-  } 
+    const responseString = proxyResData.toString('utf8');
+    console.log("Received response from Auth MS:", responseString);
+
+    try {
+      const jsonResponse = JSON.parse(responseString);
+      return jsonResponse; 
+    } catch (error) {
+      console.log("Response is not valid JSON:", error);
+      return responseString;
+    }
   }
-);
-const voosServiceProxy = httpProxy('http://localhost:5001');
-const reservasServiceProxy = httpProxy('http://localhost:5002');
-const clientesServiceProxy = httpProxy('http://localhost:5003');
+});
+
+app.post("/login", (req, res, next) => {
+  authServiceProxy(req, res, next);
+});
+
+
+  
+
+const voosServiceProxy = httpProxy("http://localhost:5001");
+const reservasServiceProxy = httpProxy("http://localhost:5002");
+const clientesServiceProxy = httpProxy("http://localhost:5003");
 
 function verifyJWT(req, res, next) {
   const token = req.headers["x-access-token"];
@@ -140,51 +87,49 @@ app.post("/logout", function (req, res) {
 //aqui vai os HTTP da vida, que comunica com os MS->
 // MS-VOOS
 // Rota para listar todos os voos (GET)
-app.get ('/voos', (req, res, next) => {
-    // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada
-    voosServiceProxy(req,res,next);
+app.get("/voos", (req, res, next) => {
+  // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada
+  voosServiceProxy(req, res, next);
 });
 
 // Rota para listar um voo pelo ID (GET)
-app.get ('/voos/:id', (req, res, next) => {
-    voosServiceProxy(req, res, next, {
-        proxyReqPathResolver: (req) => `/voos/${req.params.id}`
-    });
+app.get("/voos/:id", (req, res, next) => {
+  voosServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
+  });
 });
 
 // Rota para inserir um novo voo (POST)
-app.post ('/voos', (req, res, next) => {
-    voosServiceProxy(req, res, next, {
-        proxyReqBodyDecorator:  (bodyContent) => bodyContent
-    });
+app.post("/voos", (req, res, next) => {
+  voosServiceProxy(req, res, next, {
+    proxyReqBodyDecorator: (bodyContent) => bodyContent,
+  });
 });
 
 // Rota para editar um voo (PUT)
-app.put ('/voos/:id', (req, res, next) => {
-    voosServiceProxy(req, res, next, {
-        proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
+app.put("/voos/:id", (req, res, next) => {
+  voosServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
 
-        proxyReqBodyDecorator: (bodyContent) => bodyContent
-
-    });
+    proxyReqBodyDecorator: (bodyContent) => bodyContent,
+  });
 });
 
 // Rota para remover um voo (DELETE)
-app.delete ('/voos/:id', (req, res, next) => {
-    voosServiceProxy(req, res, next, {
-        proxyReqPathResolver: (req) => `/voos/${req.params.id}`
-    });
+app.delete("/voos/:id", (req, res, next) => {
+  voosServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
+  });
 });
 
-
 // MS-RESERVAS
-app.get ('/reservas', verifyJWT, (req, res, next) => {
-    reservasServiceProxy(req,res,next);
-})
+app.get("/reservas", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, next);
+});
 
 // MS-CLIENTES
-app.get ('/clientes', verifyJWT, (req, res, next) => {
-    clientesServiceProxy(req,res,next);
+app.get("/clientes", verifyJWT, (req, res, next) => {
+  clientesServiceProxy(req, res, next);
 });
 
 //configurações
@@ -198,9 +143,4 @@ app.use(cookieParser());
 var server = http.createServer(app);
 server.listen(3000);
 
-//pra testar no postman
-//manda um post pra localhost:3000/login no body vc coloca x-www-form-urlencoded como tipo de dado e manda 2 key, user e password ambas admin
-//ai ele vai gerar um token, vc passa esse token no get pra localhost:3000/xxxx <- depende do MS q tu quer acessar
-//jogar o token no HEADER como x-access-token na key e o value tu copia o token q foi gerado no login.
-//ele vai retornar o conteudo do DB.json dos MS em json-server, não esquece de executar os db.json com  json-server --watch db.json --port 5002
-//só abrir um console na pasta do MS e digitar a porta de acordo com o MS, a gente tem q padronizar isso dps.
+
