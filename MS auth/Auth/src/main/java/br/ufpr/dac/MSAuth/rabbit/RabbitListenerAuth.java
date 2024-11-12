@@ -1,16 +1,19 @@
 package br.ufpr.dac.MSAuth.rabbit;
 
-import br.ufpr.dac.MSAuth.service.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import java.util.HashMap;
+import java.util.Map;
+import com.rabbitmq.client.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import br.ufpr.dac.MSAuth.service.JwtService;
+import io.jsonwebtoken.io.IOException;
 
-import java.util.*;
-
-@Service
+@Component
 public class RabbitListenerAuth {
 
     private static final Logger logger = LoggerFactory.getLogger(RabbitListenerAuth.class);
@@ -21,34 +24,40 @@ public class RabbitListenerAuth {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
-    @Autowired
-    private AuthService userService;  // Inject a UserService to handle authentication
+    @RabbitListener(queues = "auth.response", ackMode = "MANUAL")
+    public void handleAuthResponse(Map<String, String> response, Message message, Channel channel) {
+        try {
+            String status = response.get("status");
+            Map<String, String> replyMessage = new HashMap<>();
 
-    @RabbitListener(queues = "auth.request")
-    public void receiveMessage(Map<String, String> message) {
-        String email = message.get("email");
-        String password = message.get("password");
+            if ("success".equals(status)) {
+                String email = response.get("email");
+                String token = jwtService.generateToken(email);
 
-        logger.info("Received authentication request for user: {}", email);
+                replyMessage.put("status", "success");
+                replyMessage.put("token", token);
+                replyMessage.put("email", email);
+                logger.info("Login successful, JWT token generated for email: {}", email);
+            } else {
+                replyMessage.put("status", "error");
+                replyMessage.put("message", response.get("message"));
+                logger.warn("Login failed: {}", response.get("message"));
+            }
 
-        // Perform the actual authentication (e.g., check if the user exists and verify password)
-        boolean isAuthenticated = userService.authenticate(email, password);
+            rabbitTemplate.convertAndSend("auth.reply", replyMessage);
 
-        AuthResponse response = new AuthResponse();
-        response.setAuthSuccess(isAuthenticated);
-
-        if (isAuthenticated) {
-            // Generate a JWT token with expiration and claims
-            String token = jwtService.generateToken(email);
-            response.setToken(token);
-            logger.info("Authentication successful for user: {}", email);
-        } else {
-            // Handle authentication failure
-            response.setErrorMessage("Invalid credentials");
-            logger.warn("Authentication failed for user: {}", email);
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        } catch (Exception e) {
+            logger.error("Error handling auth response", e);
+            try {
+                try {
+					channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+				} catch (java.io.IOException e1) {
+					e1.printStackTrace();
+				}
+            } catch (IOException ioException) {
+                logger.error("Error during message rejection", ioException);
+            }
         }
-
-        // Send the authentication response back to the saga orchestration service
-        rabbitTemplate.convertAndSend("saga-exchange", "auth.response", response);
     }
 }
