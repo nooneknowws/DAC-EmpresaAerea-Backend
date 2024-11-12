@@ -60,6 +60,7 @@ const authServiceProxy = httpProxy('http://localhost:5000', {
     }
     
 });
+
 const voosServiceProxy = httpProxy('http://localhost:5001');
 const reservasServiceProxy = httpProxy('http://localhost:5002');
 const clientesServiceProxy = httpProxy('http://localhost:5003');
@@ -88,14 +89,52 @@ app.post('/logout', function(req, res){
 })
 
 //aqui vai os HTTP da vida, que comunica com os MS->
-app.get ('/voos', verifyJWT, (req, res, next) => {
-    voosServiceProxy(req,res,next);
-})
 
+// MS-VOOS
+// Rota para listar todos os voos (GET)
+app.get ('/voos', (req, res, next) => {
+    // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada
+    voosServiceProxy(req,res,next);
+});
+
+// Rota para listar um voo pelo ID (GET)
+app.get ('/voos/:id', (req, res, next) => {
+    voosServiceProxy(req, res, next, {
+        proxyReqPathResolver: (req) => `/voos/${req.params.id}`
+    });
+});
+
+// Rota para inserir um novo voo (POST)
+app.post ('/voos', (req, res, next) => {
+    voosServiceProxy(req, res, next, {
+        proxyReqBodyDecorator:  (bodyContent) => bodyContent
+    });
+});
+
+// Rota para editar um voo (PUT)
+app.put ('/voos/:id', (req, res, next) => {
+    voosServiceProxy(req, res, next, {
+        proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
+
+        proxyReqBodyDecorator: (bodyContent) => bodyContent
+
+    });
+});
+
+// Rota para remover um voo (DELETE)
+app.delete ('/voos/:id', (req, res, next) => {
+    voosServiceProxy(req, res, next, {
+        proxyReqPathResolver: (req) => `/voos/${req.params.id}`
+    });
+});
+
+
+// MS-RESERVAS
 app.get ('/reservas', verifyJWT, (req, res, next) => {
     reservasServiceProxy(req,res,next);
 })
 
+// MS-CLIENTES
 app.get ('/clientes', verifyJWT, (req, res, next) => {
     clientesServiceProxy(req,res,next);
 });
