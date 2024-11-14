@@ -3,6 +3,9 @@ package br.ufpr.dac.reserva.model;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import br.ufpr.dac.reserva.dto.HistoricoAlteracaoEstadoDTO;
+import br.ufpr.dac.reserva.dto.ReservaDTO;
 import jakarta.persistence.*;
 
 @Entity
@@ -31,6 +34,25 @@ public class Reserva {
 
     @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<HistoricoAlteracaoEstado> historicoAlteracaoEstado = new ArrayList<>();
+    
+    public ReservaDTO toDTO() {
+        List<HistoricoAlteracaoEstadoDTO> historicoAlteracaoEstadoDTO = historicoAlteracaoEstado.stream()
+            .map(HistoricoAlteracaoEstado::toDTO)
+            .toList();
+
+        return new ReservaDTO(
+            id,
+            dataHora,
+            origem,
+            destino,
+            valor,
+            milhas,
+            status.toString(),
+            vooId,
+            clienteId,
+            historicoAlteracaoEstadoDTO
+        );
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

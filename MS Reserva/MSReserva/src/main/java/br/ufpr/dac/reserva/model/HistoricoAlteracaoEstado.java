@@ -3,6 +3,8 @@ package br.ufpr.dac.reserva.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import br.ufpr.dac.reserva.dto.HistoricoAlteracaoEstadoDTO;
+
 @Entity
 public class HistoricoAlteracaoEstado {
     @Id
@@ -29,8 +31,16 @@ public class HistoricoAlteracaoEstado {
         this.estadoOrigem = estadoOrigem;
         this.estadoDestino = estadoDestino;
     }
+    
+    public HistoricoAlteracaoEstadoDTO toDTO() {
+        return new HistoricoAlteracaoEstadoDTO(
+            id,
+            dataHoraAlteracao,
+            estadoOrigem.name(),
+            estadoDestino.name()
+        );
+    }
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

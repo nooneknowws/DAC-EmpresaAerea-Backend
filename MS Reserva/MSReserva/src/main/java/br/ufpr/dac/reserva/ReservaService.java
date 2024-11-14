@@ -1,77 +1,50 @@
 package br.ufpr.dac.reserva;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import br.ufpr.dac.reserva.cqrs.command.ReservaCommandService;
+import br.ufpr.dac.reserva.cqrs.query.ReservaQueryService;
+import br.ufpr.dac.reserva.dto.CriarReservaDTO;
 import br.ufpr.dac.reserva.dto.ReservaDTO;
-import br.ufpr.dac.reserva.model.Reserva;
 import br.ufpr.dac.reserva.model.StatusReserva;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class ReservaService {
 
     @Autowired
-    private ReservaRepository reservaRepository;
+    private ReservaCommandService reservaCommandService;
 
-    @Transactional
-    public Reserva criarReserva(ReservaDTO reservaDTO) {
-        Reserva reserva = new Reserva();
-        reserva.setDataHora(LocalDateTime.now());
-        reserva.setOrigem(reservaDTO.origem());
-        reserva.setDestino(reservaDTO.destino());
-        reserva.setValor(reservaDTO.valor());
-        reserva.setMilhas(reservaDTO.milhas());
-        reserva.setStatus(StatusReserva.PENDENTE);
-        reserva.setVooId(reservaDTO.vooId());
-        reserva.setClienteId(reservaDTO.clienteId());
+    @Autowired
+    private ReservaQueryService reservaQueryService;
 
-        String codigoReserva = gerarCodigoReserva();
-        reserva.setCodigoReserva(codigoReserva);
-
-        reservaRepository.save(reserva);
-        return reserva;
+    public ReservaDTO criarReserva(CriarReservaDTO criarReservaDTO) {
+    	return reservaCommandService.criarReserva(criarReservaDTO).toDTO();
     }
 
-    public Optional<Reserva> consultarReserva(Long id) {
-        return reservaRepository.findById(id);
+    public ReservaDTO consultarReserva(Long id) {
+        return reservaQueryService.consultarReserva(id).get();
     }
 
-    @Transactional
-    public Reserva atualizarStatusReserva(Long reservaId, StatusReserva novoStatus) {
-        Reserva reserva = reservaRepository.findById(reservaId)
-                .orElseThrow(() -> new RuntimeException("Reserva não encontrada"));
-
-        reserva.adicionarHistoricoAlteracaoEstado(reserva.getStatus(), novoStatus);
-        reserva.setStatus(novoStatus);
-        reservaRepository.save(reserva);
-        return reserva;
+    public ReservaDTO atualizarStatusReserva(Long reservaId, StatusReserva novoStatus) {
+        return reservaCommandService.atualizarStatusReserva(reservaId, novoStatus).toDTO();
     }
 
-    @Transactional
-    public Reserva cancelarReserva(Long reservaId) {
-        return atualizarStatusReserva(reservaId, StatusReserva.CANCELADO);
+    public ReservaDTO cancelarReserva(Long reservaId) {
+        return reservaCommandService.atualizarStatusReserva(reservaId, StatusReserva.CANCELADO).toDTO();
     }
 
-    @Transactional
-    public Reserva realizarCheckIn(Long reservaId) {
-        return atualizarStatusReserva(reservaId, StatusReserva.EMBARCADO);
+    public ReservaDTO realizarCheckIn(Long reservaId) {
+        return reservaCommandService.atualizarStatusReserva(reservaId, StatusReserva.EMBARCADO).toDTO();
     }
 
-    public List<Reserva> listarReservasPorCliente(Long clienteId) {
-        return reservaRepository.findByClienteId(clienteId);
+    public List<ReservaDTO> listarReservasPorCliente(Long clienteId) {
+        return reservaQueryService.listarReservasPorCliente(clienteId);
     }
 
-    public List<Reserva> listarReservasPorVoo(Long vooId) {
-        return reservaRepository.findByVooId(vooId);
-    }
-    
-    private String gerarCodigoReserva() {
-        UUID uuid = UUID.randomUUID();
-        String codigo = uuid.toString().substring(0, 3).toUpperCase() + "-" + uuid.toString().substring(3, 6);
-        return codigo;
+    public List<ReservaDTO> listarReservasPorVoo(Long vooId) {
+        return reservaQueryService.listarReservasPorVoo(vooId);
     }
 }

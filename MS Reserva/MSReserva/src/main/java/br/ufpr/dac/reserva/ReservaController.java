@@ -1,5 +1,8 @@
 package br.ufpr.dac.reserva;
 
+import br.ufpr.dac.reserva.cqrs.command.ReservaCommandService;
+import br.ufpr.dac.reserva.cqrs.query.ReservaQueryService;
+import br.ufpr.dac.reserva.dto.CriarReservaDTO;
 import br.ufpr.dac.reserva.dto.ReservaDTO;
 import br.ufpr.dac.reserva.model.Reserva;
 import br.ufpr.dac.reserva.model.StatusReserva;
@@ -8,66 +11,63 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/reservas")
 public class ReservaController {
 
     @Autowired
-    private ReservaService reservaService;
+    private ReservaCommandService commandService;
+
+    @Autowired
+    private ReservaQueryService queryService;
 
     @PostMapping
-    public ResponseEntity<Reserva> criarReserva(@RequestBody ReservaDTO reservaDTO) {
-        Reserva reserva = reservaService.criarReserva(reservaDTO);
+    public ResponseEntity<Reserva> criarReserva(@RequestBody CriarReservaDTO reservaDTO) {
+        Reserva reserva = commandService.criarReserva(reservaDTO);
         return ResponseEntity.ok(reserva);
     }
-
+    
     @GetMapping("/{id}")
-    public ResponseEntity<Reserva> consultarReserva(@PathVariable Long id) {
-        Optional<Reserva> reserva = reservaService.consultarReserva(id);
+    public ResponseEntity<ReservaDTO> consultarReserva(@PathVariable Long id) {
+        Optional<ReservaDTO> reserva = queryService.consultarReserva(id);
         return reserva.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}/cancelar")
     public ResponseEntity<Reserva> cancelarReserva(@PathVariable Long id) {
-        Reserva reserva = reservaService.cancelarReserva(id);
+        Reserva reserva = commandService.atualizarStatusReserva(id, StatusReserva.CANCELADO);
         return ResponseEntity.ok(reserva);
     }
 
     @PutMapping("/{id}/checkin")
     public ResponseEntity<Reserva> realizarCheckIn(@PathVariable Long id) {
-        Reserva reserva = reservaService.realizarCheckIn(id);
+        Reserva reserva = commandService.atualizarStatusReserva(id, StatusReserva.EMBARCADO);
         return ResponseEntity.ok(reserva);
     }
 
     @GetMapping("/cliente/{clienteId}")
-    public ResponseEntity<List<Reserva>> listarReservasPorCliente(@PathVariable Long clienteId) {
-        List<Reserva> reservas = reservaService.listarReservasPorCliente(clienteId);
+    public ResponseEntity<List<ReservaDTO>> listarReservasPorCliente(@PathVariable Long clienteId) {
+        List<ReservaDTO> reservas = queryService.listarReservasPorCliente(clienteId);
         return ResponseEntity.ok(reservas);
     }
 
     @GetMapping("/voo/{vooId}")
-    public ResponseEntity<List<Reserva>> listarReservasPorVoo(@PathVariable Long vooId) {
-        List<Reserva> reservas = reservaService.listarReservasPorVoo(vooId);
+    public ResponseEntity<List<ReservaDTO>> listarReservasPorVoo(@PathVariable Long vooId) {
+        List<ReservaDTO> reservas = queryService.listarReservasPorVoo(vooId);
         return ResponseEntity.ok(reservas);
     }
 
     @PutMapping("/{id}/confirmar")
     public ResponseEntity<Reserva> confirmarReserva(@PathVariable Long id) {
-        Reserva reserva = reservaService.atualizarStatusReserva(id, StatusReserva.CONFIRMADO);
+        Reserva reserva = commandService.atualizarStatusReserva(id, StatusReserva.CONFIRMADO);
         return ResponseEntity.ok(reserva);
     }
 
     @PutMapping("/{id}/finalizar")
     public ResponseEntity<Reserva> finalizarReserva(@PathVariable Long id) {
-        Reserva reserva = reservaService.atualizarStatusReserva(id, StatusReserva.FINALIZADO);
+        Reserva reserva = commandService.atualizarStatusReserva(id, StatusReserva.FINALIZADO);
         return ResponseEntity.ok(reserva);
     }
 }
