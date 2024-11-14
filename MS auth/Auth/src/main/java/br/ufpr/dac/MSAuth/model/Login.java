@@ -2,23 +2,23 @@ package br.ufpr.dac.MSAuth.model;
 import java.io.Serializable;
 
 public class Login implements Serializable {
-	private String login;
+	private String email;
 	private String senha;
 	public Login() {
 		super();
 	}
-	public Login(String login, String senha) {
+	public Login(String email, String senha) {
 		super();
-		this.login = login;
+		this.email = email;
 		this.senha = senha;
 	}
 	
 	
-	public String getLogin() {
-		return login;
+	public String getEmail() {
+		return email;
 	}
-	public void setLogin(String login) {
-		this.login = login;
+	public void setEmail(String email) {
+		this.email = email;
 	}
 	public String getSenha() {
 		return senha;
