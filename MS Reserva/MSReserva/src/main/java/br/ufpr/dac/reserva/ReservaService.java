@@ -3,11 +3,9 @@ package br.ufpr.dac.reserva;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import br.ufpr.dac.reserva.dto.ReservaDTO;
 import br.ufpr.dac.reserva.model.Reserva;
 import br.ufpr.dac.reserva.model.StatusReserva;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
