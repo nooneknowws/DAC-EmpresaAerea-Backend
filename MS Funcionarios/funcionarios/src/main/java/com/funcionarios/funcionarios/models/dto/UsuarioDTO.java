@@ -1,25 +1,30 @@
 package com.funcionarios.funcionarios.models.dto;
 
-public class FuncionarioDTO {
+import java.util.List;
 
-  private Long id;
+public class UsuarioDTO {
+
+    private Long id;
     private String cpf;
     private String nome;
     private String email;
+    private EnderecoDTO endereco;
     private String perfil;
     private String telefone;
     private String senha;
 
-    public FuncionarioDTO() {}
+    public UsuarioDTO() {}
 
-    public FuncionarioDTO(Long id, String cpf, String nome, String email, String perfil, String telefone) {
+    public UsuarioDTO(Long id, String cpf, String nome, String email, EnderecoDTO endereco, String perfil, String telefone) {
         this.id = id;
         this.cpf = cpf;
         this.nome = nome;
         this.email = email;
+        this.endereco = endereco;
         this.perfil = perfil;
         this.telefone = telefone;
     }
+
 
     public Long getId() {
         return id;
@@ -53,6 +58,14 @@ public class FuncionarioDTO {
         this.email = email;
     }
 
+    public EnderecoDTO getEndereco() {
+        return endereco;
+    }
+
+    public void setEndereco(EnderecoDTO endereco) {
+        this.endereco = endereco;
+    }
+
     public String getPerfil() {
         return perfil;
     }
@@ -76,5 +89,4 @@ public class FuncionarioDTO {
 	public void setSenha(String senha) {
 		this.senha = senha;
 	}
-
 }

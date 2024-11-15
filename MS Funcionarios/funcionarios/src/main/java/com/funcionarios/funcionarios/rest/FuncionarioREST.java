@@ -1,23 +1,31 @@
 package com.funcionarios.funcionarios.rest;
 
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException; 
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
+import com.funcionarios.funcionarios.models.Usuario;
+import com.funcionarios.funcionarios.models.dto.UsuarioDTO;
 import com.funcionarios.funcionarios.repository.FuncionarioRepository;
+import jakarta.transaction.Transactional;
 
-public class FuncionarioREST {
-  private static final Logger logger = LoggerFactory.getLogger(FuncionarioREST.class);
+@RestController
+@CrossOrigin
+public class FuncionarioRest {
+	private static final Logger logger = LoggerFactory.getLogger(FuncionarioRest.class);
     @Autowired
     private FuncionarioRepository funcionarioRepository;
 
@@ -26,16 +34,16 @@ public class FuncionarioREST {
     
    
     @Transactional(dontRollbackOn = {DataIntegrityViolationException.class})
-    @PostMapping("/cadastro/funcionario")
-    public ResponseEntity<FuncionarioDTO> inserirFuncionario(@RequestBody @Validated FuncionarioDTO funcionarioDTo) {
+    @PostMapping("/cadastro/funcionarios")
+    public ResponseEntity<UsuarioDTO> inserirFuncionario(@RequestBody @Validated UsuarioDTO usuarioDTO) {
         try {
-            Funcionario funcionario = modelMapper.map(FuncionarioDTO, Funcionario.class);
-            funcionario.setSalt(gerarSalt());
-            funcionario.setSenha(hashSenha(FuncionarioDTO.getSenha(), funcionario.getSalt())); 
+            Usuario usuario = modelMapper.map(usuarioDTO, Usuario.class);
+            usuario.setSalt(gerarSalt());
+            usuario.setSenha(hashSenha(usuarioDTO.getSenha(), usuario.getSalt())); 
 
-            FuncionarioRepository.save(usuario);
+            funcionarioRepository.save(usuario);
 
-            FuncionarioDTO savedFuncionarioDTO = modelMapper.map(funcionario, FuncionarioDTO.class);
+            UsuarioDTO savedFuncionarioDTO = modelMapper.map(usuario, UsuarioDTO.class);
             savedFuncionarioDTO.setSenha(null);
 
             return new ResponseEntity<>(savedFuncionarioDTO, HttpStatus.CREATED);
@@ -54,9 +62,9 @@ public class FuncionarioREST {
     }
     
     @GetMapping("/usuarios/funcionarios")
-    List<FuncionarioDTO> listarTodos(){
-    	List<Funcionario> lista = FuncionarioRepository.findAll();
-    	return lista.stream().map(e -> modelMapper.map(f, FuncionarioDTO.class)).collect(Collectors.toList());
+    List<UsuarioDTO> listarTodos(){
+    	List<Usuario> lista = funcionarioRepository.findAll();
+    	return lista.stream().map(e -> modelMapper.map(e, UsuarioDTO.class)).collect(Collectors.toList());
     }
 
     private String gerarSalt() {
@@ -76,4 +84,5 @@ public class FuncionarioREST {
             throw new RuntimeException("Erro ao criptografar a senha", e);
         }
     }
+
 }
