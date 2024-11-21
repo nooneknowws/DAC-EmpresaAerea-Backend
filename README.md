@@ -1,6 +1,11 @@
 # DAC-EmpresaAerea-Backend
 
-  
+## TODO
+
+Mensageria/SAGA
+Implementar no front
+Ajustar error codes
+Limpar código
 
 ## Clonar o respositório.
 
