@@ -2,6 +2,9 @@ package com.funcionarios.funcionarios.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.funcionarios.funcionarios.models.Usuario;
 import com.funcionarios.funcionarios.models.dto.LoginDTO;
 import com.funcionarios.funcionarios.repository.FuncionarioRepository;
 
