@@ -1,6 +1,7 @@
 FROM openjdk:17-jdk-slim
 WORKDIR /app
 COPY target/*.jar app.jar
-# porta usada para a chamada dos endpoints, por padrão o AUTH usa a 5000, usar a partir dai
-EXPOSE 5000
+EXPOSE 5001
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# docker run -p 5001:5001 voos-0.0.1
