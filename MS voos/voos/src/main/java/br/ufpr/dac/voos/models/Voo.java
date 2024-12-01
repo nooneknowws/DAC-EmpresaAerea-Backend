@@ -32,9 +32,17 @@ public class Voo {
     @Column(name = "quantidade_passageiros")
     private int quantidadePassageiros;
 
-    //TODO: IMPLEMENTAR NO BANCO
-    // @Column(name = "status")
-    // private String status;
+    @Column(name = "status")
+    private String status;
+
+
+    @PrePersist
+    private void prePersist() {
+        if (this.status == null) {
+            this.status = "CONFIRMADO";
+        }
+    }
+
 
     
     public Long getId() {
@@ -93,13 +101,13 @@ public class Voo {
         this.quantidadePassageiros = quantidadePassageiros;
     }
 
-    // public String getStatus() {
-    //     return status;
-    // }
+    public String getStatus() {
+        return status;
+    }
 
-    // public void setStatus(String status) {
-    //     this.status = status;
-    // }
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
     
 }

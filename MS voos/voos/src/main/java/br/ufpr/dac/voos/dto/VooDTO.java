@@ -12,6 +12,7 @@ public class VooDTO {
     private BigDecimal valorPassagem;
     private int quantidadeAssentos;
     private int quantidadePassageiros;
+    private String status;
 
     public VooDTO(Voo voo) {
         this.id = voo.getId();
@@ -21,6 +22,7 @@ public class VooDTO {
         this.valorPassagem = voo.getValorPassagem();
         this.quantidadeAssentos = voo.getQuantidadeAssentos();
         this.quantidadePassageiros = voo.getQuantidadePassageiros();
+        this.status = voo.getStatus();
     }
 
     public long getId() {
@@ -49,6 +51,10 @@ public class VooDTO {
 
     public int getQuantidadePassageiros() {
         return quantidadePassageiros;
+    }
+
+    public String getStatus() {
+        return status;
     }
 
 }

@@ -1,7 +1,9 @@
 package br.ufpr.dac.voos.services;
 
 import br.ufpr.dac.voos.models.Voo;
+import br.ufpr.dac.voos.models.Aeroporto;
 import br.ufpr.dac.voos.repository.VooRepository;
+import br.ufpr.dac.voos.repository.AeroportoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,20 +14,33 @@ public class VooService {
     
         @Autowired
         private VooRepository vooRepository;
-    
+
+        @Autowired
+        private AeroportoRepository aeroportoRepository;
+
+
         // Get all
         public List<Voo> listarTodosVoos() {
-            return vooRepository.findAll();
+            return vooRepository.findAllWithOrigemAndDestino();
         }
         
         // Get one
         public Voo listarUmVoo(Long id) {
-            return vooRepository.findById(id).orElse(null);
+            return vooRepository.findByIdWithOrigemAndDestino(id).orElse(null);         
         }
     
         // Post
-        public Voo inserirVoo(Voo voo) {
-            return vooRepository.save(voo);
+        public Voo inserirVoo(Voo voo, String origemCodigo, String destinoCodigo) {
+            Aeroporto origem = aeroportoRepository.findByCodigo(origemCodigo)
+                .orElseThrow(() -> new RuntimeException("Aeroporto de origem não encontrado: " + origemCodigo));
+        
+        Aeroporto destino = aeroportoRepository.findByCodigo(destinoCodigo)
+                .orElseThrow(() -> new RuntimeException("Aeroporto de destino não encontrado: " + destinoCodigo));
+        
+        voo.setOrigem(origem);
+        voo.setDestino(destino);
+
+        return vooRepository.save(voo);
         }
     
         // Put
