@@ -77,7 +77,11 @@ public class VooService {
     
         // Delete
         public void deletarVoo(Long id) {
-            vooRepository.deleteById(id);
+            if (vooRepository.existsById(id)) {
+                vooRepository.deleteById(id);
+            } else {
+                throw new RuntimeException("Voo não encontrado com o ID: " + id);
+            }
         }
     
 }

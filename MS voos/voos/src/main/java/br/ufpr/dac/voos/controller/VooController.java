@@ -39,6 +39,7 @@ public class VooController {
             novoVoo.setDataHoraPartida(vooDTO.getDataHoraPartida());
             novoVoo.setValorPassagem(vooDTO.getValorPassagem());
             novoVoo.setQuantidadeAssentos(vooDTO.getQuantidadeAssentos());
+            novoVoo.setQuantidadePassageiros(vooDTO.getQuantidadePassageiros());
     
             Voo vooCriado = vooService.inserirVoo(novoVoo, vooDTO.getCodigoOrigem(), vooDTO.getCodigoDestino());
             return ResponseEntity.ok(vooCriado);
@@ -49,10 +50,15 @@ public class VooController {
             Voo vooAtualizado = vooService.editarVoo(id, vooDTO);
             return ResponseEntity.ok(new VooDTO(vooAtualizado));
         }
-    
+        
         @DeleteMapping("/{id}")
-        public void deletarVoo(@PathVariable("id") Long id) {
-            vooService.deletarVoo(id);
+        public ResponseEntity<Void> deletarVoo(@PathVariable("id") Long id) {
+            try {
+                vooService.deletarVoo(id);
+                return ResponseEntity.noContent().build();
+            } catch (RuntimeException e) {
+                return ResponseEntity.notFound().build();
+            }
         }
     
 }
