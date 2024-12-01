@@ -3,6 +3,9 @@ package br.ufpr.dac.MSAuth.service;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import br.ufpr.dac.MSAuth.model.dto.LoginDTO;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,11 +21,11 @@ public class AuthService {
     private RabbitTemplate rabbitTemplate;
 
     public boolean authenticate(String email, String password) {
-        Map<String, String> clientCheckMessage = new HashMap<>();
-        clientCheckMessage.put("email", email);
-        rabbitTemplate.convertAndSend("saga-exchange", "client.verification", clientCheckMessage);
+        LoginDTO loginDTO = new LoginDTO(email, password);
+        rabbitTemplate.convertAndSend("saga-exchange", "client.verification", loginDTO);
 
-        logger.info("Sent client verification request for email: {}", email);
-		return false;
+        logger.info("Sent client verification request for email: {}", loginDTO.getEmail());
+        
+        return false;
     }
 }

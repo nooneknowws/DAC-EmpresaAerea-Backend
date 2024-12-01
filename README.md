@@ -1,7 +1,12 @@
 # DAC-EmpresaAerea-Backend
 
-  
-
+## TODO
+```sh
+Mensageria/SAGA
+Implementar no front
+Ajustar error codes
+Limpar código
+```
 ## Clonar o respositório.
 
 `git clone + url`
@@ -31,6 +36,41 @@ docker build -t nome-da-imagem .
 ```
 ```bash
 docker run -d -p 500X:500X nome-da-imagem
+```
+### Instalação do postgres/rabbitMQ no docker - IMPORTANTISSIMO
+
+#### RabbitMQ
+baixar a imagem
+```bash
+docker pull rabbitmq:management
+```
+criar o container
+```bash
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:management
+```
+Após instalar e rodar no docker da pra entrar na porta do rabbitMQ pra ter um "pgadmin" dele
+http://localhost:15672
+Usuario: guest
+Senha: guest
+
+#### PostgreSQL
+baixar as imagens
+```bash
+docker pull postgres
+docker pull dpage/pgadmin4
+```
+criar a network
+```bash
+docker network create --driver bridge postgres-network
+```
+criar o container do PostgreSQL
+```bash
+docker run --name dac-postgres --network=postgres-network -e "POSTGRES_PASSWORD=postgres" -p 5432:5432 -v /users/postgres/data -d postgres
+lembrar que caso você ja tenha o PostgreSQL instalado no PC é bom trocar a porta de origem pra 5433, ficando 5433:5432 pra evitar conflitos
+```
+criar o container do PGAdmin4
+```bash
+docker run --name pgadmin --network=postgres-network -e "PGADMIN_DEFAULT_EMAIL=admin@admin.com" -e "PGADMIN_DEFAULT_PASSWORD=postgres" -p 15432:80 -d dpage/pgadmin4
 ```
 
 
