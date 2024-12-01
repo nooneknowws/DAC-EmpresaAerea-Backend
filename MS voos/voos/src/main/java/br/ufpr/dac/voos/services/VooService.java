@@ -1,6 +1,7 @@
 package br.ufpr.dac.voos.services;
 
 import br.ufpr.dac.voos.models.Voo;
+import br.ufpr.dac.voos.dto.UpdateVooDTO;
 import br.ufpr.dac.voos.models.Aeroporto;
 import br.ufpr.dac.voos.repository.VooRepository;
 import br.ufpr.dac.voos.repository.AeroportoRepository;
@@ -44,20 +45,34 @@ public class VooService {
         }
     
         // Put
-        public Voo editarVoo(Long id, Voo voo) {
-            Voo vooEditado = vooRepository.findById(id).orElse(null);
+        public Voo editarVoo(Long id, UpdateVooDTO dto) {
+            Voo vooExistente = vooRepository.findById(id).orElseThrow(() -> new RuntimeException("Voo não encontrado!"));
     
-            if (vooEditado != null) {
-                vooEditado.setDataHoraPartida(voo.getDataHoraPartida());
-                vooEditado.setOrigem(voo.getOrigem());
-                vooEditado.setDestino(voo.getDestino());
-                vooEditado.setValorPassagem(voo.getValorPassagem());
-                vooEditado.setQuantidadeAssentos(voo.getQuantidadeAssentos());
-                vooEditado.setQuantidadePassageiros(voo.getQuantidadePassageiros());
-                vooRepository.save(vooEditado);
+            if (dto.getDataHoraPartida() != null) {
+                vooExistente.setDataHoraPartida(dto.getDataHoraPartida());
+            }
+            if (dto.getCodigoOrigem() != null) {
+                vooExistente.setOrigem(aeroportoRepository.findByCodigo(dto.getCodigoOrigem())
+                    .orElseThrow(() -> new RuntimeException("Aeroporto de origem não encontrado!")));
+            }
+            if (dto.getCodigoDestino() != null) {
+                vooExistente.setDestino(aeroportoRepository.findByCodigo(dto.getCodigoDestino())
+                    .orElseThrow(() -> new RuntimeException("Aeroporto de destino não encontrado!")));
+            }
+            if (dto.getValorPassagem() != null) {
+                vooExistente.setValorPassagem(dto.getValorPassagem());
+            }
+            if (dto.getQuantidadeAssentos() != null) {
+                vooExistente.setQuantidadeAssentos(dto.getQuantidadeAssentos());
+            }
+            if (dto.getQuantidadePassageiros() != null) {
+                vooExistente.setQuantidadePassageiros(dto.getQuantidadePassageiros());
+            }
+            if (dto.getStatus() != null) {
+                vooExistente.setStatus(dto.getStatus());
             }
     
-            return vooEditado;
+            return vooRepository.save(vooExistente);
         }
     
         // Delete

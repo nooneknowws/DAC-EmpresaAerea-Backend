@@ -1,6 +1,7 @@
 package br.ufpr.dac.voos.controller;
 
 import br.ufpr.dac.voos.dto.CreateVooDTO;
+import br.ufpr.dac.voos.dto.UpdateVooDTO;
 import br.ufpr.dac.voos.dto.VooDTO;
 import br.ufpr.dac.voos.models.Voo;
 import br.ufpr.dac.voos.services.VooService;
@@ -44,8 +45,9 @@ public class VooController {
         }
     
         @PutMapping("/{id}")
-        public Voo editarVoo(@PathVariable("id") Long id, @RequestBody Voo voo) {
-            return vooService.editarVoo(id, voo);
+        public ResponseEntity<VooDTO> editarVoo(@PathVariable("id") Long id, @RequestBody UpdateVooDTO vooDTO) {
+            Voo vooAtualizado = vooService.editarVoo(id, vooDTO);
+            return ResponseEntity.ok(new VooDTO(vooAtualizado));
         }
     
         @DeleteMapping("/{id}")
