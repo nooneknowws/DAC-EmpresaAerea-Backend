@@ -83,5 +83,17 @@ public class VooService {
                 throw new RuntimeException("Voo não encontrado com o ID: " + id);
             }
         }
+
+        // Patch Status
+        public void atualizarStatus(Long id, String status) {
+            Voo voo = vooRepository.findById(id).orElseThrow(() -> new RuntimeException("Voo não encontrado"));
+    
+            if (!status.equals("CONFIRMADO") && !status.equals("REALIZADO") && !status.equals("CANCELADO")) {
+                throw new IllegalArgumentException("Status inválido");
+            }
+    
+            voo.setStatus(status);
+            vooRepository.save(voo);
+        }
     
 }

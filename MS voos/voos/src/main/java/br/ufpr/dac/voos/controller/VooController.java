@@ -60,5 +60,18 @@ public class VooController {
                 return ResponseEntity.notFound().build();
             }
         }
+
+        @PatchMapping("/{id}/status")
+        public ResponseEntity<Void> atualizarStatus(
+            @PathVariable("id") Long id, 
+            @RequestParam("status") String status
+        ) {
+            try {
+                vooService.atualizarStatus(id, status);
+                return ResponseEntity.noContent().build();
+            } catch (RuntimeException e) {
+                return ResponseEntity.notFound().build();
+            }
+        }
     
 }
