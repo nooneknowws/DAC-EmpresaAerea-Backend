@@ -75,8 +75,6 @@ docker run --name pgadmin --network=postgres-network -e "PGADMIN_DEFAULT_EMAIL=a
 
 
 
-
-//colocar o numero e link das versões
 + Versão 20.17.0 do [Node](). 
 + Versão 10.8.2 do [npm]().
 + Versão 17 do [Java](). 
