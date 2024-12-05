@@ -56,6 +56,7 @@ app.post("/login", (req, res, next) => {
 const voosServiceProxy = httpProxy("http://localhost:5001");
 const reservasServiceProxy = httpProxy("http://localhost:5002");
 const clientesServiceProxy = httpProxy("http://localhost:5003");
+const FuncionarioServiceProxy = httpProxy("http://localhost:5007");
 
 function verifyJWT(req, res, next) {
   const token = req.headers["x-access-token"];
@@ -130,6 +131,37 @@ app.get("/reservas", verifyJWT, (req, res, next) => {
 // MS-CLIENTES
 app.get("/clientes", verifyJWT, (req, res, next) => {
   clientesServiceProxy(req, res, next);
+});
+
+// MS-FUNCIONARIOS
+  // registrar novo funcionario
+  // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada das reqs
+app.post("/employee/register", verifyJWT, (req, res, next) => {
+  FuncionarioServiceProxy(req, res, next);
+});
+  // listar todos os funcionario
+app.get("/employee", verifyJWT, (req, res, next) => {
+  FuncionarioServiceProxy(req, res, next);
+});
+  // listar func p/ id
+app.get("/employee/{id}", (req, res, next) => {
+  FuncionarioServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => `/employee/${req.params.id}`,
+  });
+});
+  // update do funcionario
+app.put("/employee/edit/{id}", (req, res, next) => {
+  FuncionarioServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => `/employee/edit/${req.params.id}`,
+
+    proxyReqBodyDecorator: (bodyContent) => bodyContent,
+  });
+});
+// remover funcionario
+app.delete("/employee/delete/{id}", (req, res, next) => {
+  FuncionarioServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => `/employee/delete/${req.params.id}`,
+  });
 });
 
 //configurações
