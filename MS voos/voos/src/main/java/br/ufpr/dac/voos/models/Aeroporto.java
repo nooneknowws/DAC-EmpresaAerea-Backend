@@ -1,29 +1,34 @@
 package br.ufpr.dac.voos.models;
 
+import jakarta.persistence.*;
+@Entity
+@Table(name = "aeroportos")
 public class Aeroporto {
-    public String id;
-    public String nome;
-    public String cidade;
-    public String estado;
-    public String pais;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    public Aeroporto() {
-        super();
-    }
+    @Column(name = "nome")
+    private String nome;
 
-    public Aeroporto(String id, String nome, String cidade, String estado, String pais) {
-        this.id = id;
-        this.nome = nome;
-        this.cidade = cidade;
-        this.estado = estado;
-        this.pais = pais;
-    }
+    @Column(name = "codigo")
+    private String codigo;
 
-    public String getId() {
+    @Column(name = "cidade")
+    private String cidade;
+
+    @Column(name = "estado")
+    private String estado;
+
+    @Column(name = "pais")
+    private String pais;
+
+    
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -33,6 +38,14 @@ public class Aeroporto {
 
     public void setNome(String nome) {
         this.nome = nome;
+    }
+
+    public String getCodigo() {
+        return codigo;
+    }
+
+    public void setCodigo(String codigo) {
+        this.codigo = codigo;
     }
 
     public String getCidade() {
@@ -58,4 +71,10 @@ public class Aeroporto {
     public void setPais(String pais) {
         this.pais = pais;
     }
+
+
+
+
+    
+    
 }
