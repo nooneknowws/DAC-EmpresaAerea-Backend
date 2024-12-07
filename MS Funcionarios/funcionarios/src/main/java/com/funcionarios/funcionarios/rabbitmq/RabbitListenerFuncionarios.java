@@ -9,6 +9,8 @@ import org.springframework.amqp.core.Message;
 
 import com.funcionarios.funcionarios.models.dto.LoginDTO;
 import com.funcionarios.funcionarios.services.FuncionarioService;
+import com.funcionarios.funcionarios.services.VerificationResult;
+
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +19,8 @@ import com.rabbitmq.client.Channel;
 
 @Service
 public class RabbitListenerFuncionarios {
-  private static final Logger logger = LoggerFactory.getLogger(RabbitListenerFuncionarios.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(RabbitListenerFuncionarios.class);
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
@@ -25,41 +28,48 @@ public class RabbitListenerFuncionarios {
     @Autowired
     private FuncionarioService funcionarioService;
 
-    @RabbitListener(queues = "funcionario.verification", ackMode = "MANUAL")
-    public void verifyFuncionario(LoginDTO loginDTO, Message message, Channel channel) {
+    @RabbitListener(queues = "employee.verification", ackMode = "MANUAL")
+    public void verifyEmployee(LoginDTO loginDTO, Message message, Channel channel) {
         try {
-            logger.info("Received funcionario verification request for email: {}", loginDTO.getEmail());
-           
-            LoginDTO funcionarioInfo = funcionarioService.verificarFuncionario(loginDTO.getEmail(), loginDTO.getSenha());
-            
-            if (funcionarioInfo == null) {
-                logger.info("Invalid credentials for email: {}", loginDTO.getEmail());
-                sendVerificationResponse("failure", "Invalid credentials", null, message, channel);
+            logger.info("Received employee verification request for email: {}", loginDTO.getEmail());
+
+            VerificationResult verificationResult = funcionarioService.verificarFuncionario(loginDTO.getEmail(), loginDTO.getSenha());
+
+            if (!verificationResult.isSuccess()) {
+                String error = verificationResult.getError();
+                if ("email_not_found".equals(error)) {
+                    logger.info("Email not found: {}", loginDTO.getEmail());
+                    sendVerificationResponse("failure", "Email not found", null, message, channel);
+                } else if ("wrong_password".equals(error)) {
+                    logger.info("Wrong password for email: {}", loginDTO.getEmail());
+                    sendVerificationResponse("failure", "Wrong password", null, message, channel);
+                }
                 return;
             }
-            
+
+            LoginDTO employeeInfo = verificationResult.getLoginDTO();
             Map<String, String> response = new HashMap<>();
-            response.put("id", String.valueOf(funcionarioInfo.getId())); 
-            response.put("email", funcionarioInfo.getEmail());           
-            response.put("perfil", funcionarioInfo.getPerfil());         
+            response.put("id", String.valueOf(employeeInfo.getId()));
+            response.put("email", employeeInfo.getEmail());
+            response.put("perfil", employeeInfo.getPerfil());
+            response.put("statusFunc", employeeInfo.getStatus());
             response.put("status", "success");
             response.put("message", "Authentication successful");
 
-            rabbitTemplate.convertAndSend("saga-exchange", "funcionario.verification.response", response);
-            logger.info("Sent funcionario verification response to saga-exchange with routing key 'funcionario.verification.response'");
+            rabbitTemplate.convertAndSend("saga-exchange", "employee.verification.response", response);
+            logger.info("Sent employee verification response for email: {}", employeeInfo.getEmail());
 
-            
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
         } catch (Exception e) {
-            logger.error("Error verifying funcionario", e);
+            logger.error("Error verifying employee", e);
             try {
-               
                 channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
             } catch (IOException ioException) {
                 logger.error("Error during message rejection", ioException);
             }
         }
     }
+
 
     private void sendVerificationResponse(String status, String message, LoginDTO loginDTO, Message messageObj, Channel channel) {
         Map<String, String> response = new HashMap<>();
@@ -70,9 +80,9 @@ public class RabbitListenerFuncionarios {
         }
         response.put("status", status);
         response.put("message", message);
-        
-        rabbitTemplate.convertAndSend("saga-exchange", "funcionario.verification.response", response);
-        logger.info("Sent funcionario verification response to saga-exchange with routing key 'funcionario.verification.response'");
+
+        rabbitTemplate.convertAndSend("saga-exchange", "employee.verification.response", response);
+        logger.info("Sent employee verification response to saga-exchange with routing key 'employee.verification.response'");
         try {
             channel.basicAck(messageObj.getMessageProperties().getDeliveryTag(), false);
         } catch (IOException e) {
@@ -80,3 +90,4 @@ public class RabbitListenerFuncionarios {
         }
     }
 }
+

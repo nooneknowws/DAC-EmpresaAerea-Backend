@@ -9,9 +9,24 @@ import java.util.Base64;
 import java.util.List;
 
 @Entity
-public class Usuario {
+public class Funcionario {
 
-    @Id
+    public Funcionario(Long id, String cpf, String nome, String email, String senha, String salt, Endereco endereco,
+			String perfil, String status, String telefone) {
+		super();
+		this.id = id;
+		this.cpf = cpf;
+		this.nome = nome;
+		this.email = email;
+        this.salt = gerarSalt();
+        this.senha = hashSenha(senha, this.salt); 
+		this.endereco = endereco;
+		this.perfil = perfil;
+		this.status = status;
+		this.telefone = telefone;
+	}
+
+	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -35,21 +50,14 @@ public class Usuario {
 
     @Column(nullable = false)
     private String perfil;
-
+    
+    @Column(nullable = false)
+    private String status;
+    
+    @Column
     private String telefone;
 
-    public Usuario() {}
-
-    public Usuario(String cpf, String nome, String email, String senha, Endereco endereco, String perfil, String telefone) {
-        this.cpf = cpf;
-        this.nome = nome;
-        this.email = email;
-        this.salt = gerarSalt();
-        this.senha = hashSenha(senha, this.salt); 
-        this.endereco = endereco;
-        this.perfil = perfil;
-        this.telefone = telefone;
-    }
+    public Funcionario() {}
 
     private String gerarSalt() {
         byte[] salt = new byte[16];
@@ -143,6 +151,14 @@ public class Usuario {
 
 	public void setTelefone(String telefone) {
 		this.telefone = telefone;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
 	}
 
 }

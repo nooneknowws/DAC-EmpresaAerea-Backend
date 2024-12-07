@@ -33,8 +33,7 @@ public class ClienteRest {
     private final ModelMapper modelMapper = new ModelMapper();
     
    
-    @Transactional(dontRollbackOn = {DataIntegrityViolationException.class})
-    @PostMapping("/cadastro/clientes")
+    @PostMapping("/clientes/cadastro")
     public ResponseEntity<UsuarioDTO> inserirFuncionario(@RequestBody @Validated UsuarioDTO usuarioDTO) {
         try {
             Usuario usuario = modelMapper.map(usuarioDTO, Usuario.class);
@@ -61,7 +60,7 @@ public class ClienteRest {
         }
     }
     
-    @GetMapping("/usuarios/clientes")
+    @GetMapping("/clientes/busca")
     List<UsuarioDTO> listarTodos(){
     	List<Usuario> lista = clienteRepository.findAll();
     	return lista.stream().map(e -> modelMapper.map(e, UsuarioDTO.class)).collect(Collectors.toList());

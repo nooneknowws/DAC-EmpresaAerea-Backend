@@ -19,8 +19,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import com.funcionarios.funcionarios.models.Usuario;
-import com.funcionarios.funcionarios.models.dto.UsuarioDTO;
+import com.funcionarios.funcionarios.models.Funcionario;
+import com.funcionarios.funcionarios.models.dto.FuncionarioDTO;
+import com.funcionarios.funcionarios.models.dto.FuncionarioDTO;
 import com.funcionarios.funcionarios.repository.FuncionarioRepository;
 import com.funcionarios.funcionarios.services.FuncionarioService;
 
@@ -28,7 +29,7 @@ import jakarta.transaction.Transactional;
 
 @RestController
 @CrossOrigin
-@RequestMapping("/employees")
+@RequestMapping("/funcionarios")
 public class FuncionarioRest {
     private static final Logger logger = LoggerFactory.getLogger(FuncionarioRest.class);
 
@@ -40,22 +41,22 @@ public class FuncionarioRest {
 
     private final ModelMapper modelMapper = new ModelMapper();
 
-    @PostMapping("/register")
-    public ResponseEntity<Object> inserirFuncionario(@RequestBody @Validated UsuarioDTO usuarioDTO) {
+    @PostMapping("/cadastro")
+    public ResponseEntity<Object> inserirFuncionario(@RequestBody @Validated FuncionarioDTO funcionarioDTO) {
         try {
-            if (funcionarioRepository.findByEmail(usuarioDTO.getEmail()).isPresent()) {
+            if (funcionarioRepository.findByEmail(funcionarioDTO.getEmail()).isPresent()) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body("E-mail já está em uso.");
             }
 
-            Usuario usuario = modelMapper.map(usuarioDTO, Usuario.class);
+            Funcionario usuario = modelMapper.map(funcionarioDTO, Funcionario.class);
             usuario.setSalt(gerarSalt());
-            usuario.setSenha(hashSenha(usuarioDTO.getSenha(), usuario.getSalt()));
+            usuario.setSenha(hashSenha(funcionarioDTO.getSenha(), usuario.getSalt()));
 
             funcionarioRepository.save(usuario);
 
-            UsuarioDTO savedFuncionarioDTO = modelMapper.map(usuario, UsuarioDTO.class);
-            savedFuncionarioDTO.setSenha(null); // Não retornar senha na resposta
+            FuncionarioDTO savedFuncionarioDTO = modelMapper.map(usuario, FuncionarioDTO.class);
+            savedFuncionarioDTO.setSenha(null); 
 
             return ResponseEntity.status(HttpStatus.CREATED).body(savedFuncionarioDTO);
         } catch (DataIntegrityViolationException e) {
@@ -70,56 +71,56 @@ public class FuncionarioRest {
     }
 
     @GetMapping
-    public ResponseEntity<List<UsuarioDTO>> listarTodos() {
-        List<Usuario> lista = funcionarioRepository.findAll();
-        List<UsuarioDTO> usuariosDTO = lista.stream()
-                .map(usuario -> modelMapper.map(usuario, UsuarioDTO.class))
+    public ResponseEntity<List<FuncionarioDTO>> listarTodos() {
+        List<Funcionario> lista = funcionarioRepository.findAll();
+        List<FuncionarioDTO> usuariosDTO = lista.stream()
+                .map(usuario -> modelMapper.map(usuario, FuncionarioDTO.class))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(usuariosDTO);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Object> getOneFuncionario(@PathVariable(value = "id") Long id) {
-        Optional<Usuario> funcionario = funcionarioRepository.findById(id);
+        Optional<Funcionario> funcionario = funcionarioRepository.findById(id);
         if (funcionario.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Funcionário com ID " + id + " não encontrado.");
         }
-        UsuarioDTO usuarioDTO = modelMapper.map(funcionario.get(), UsuarioDTO.class);
-        return ResponseEntity.ok(usuarioDTO);
+        FuncionarioDTO funcionarioDTO = modelMapper.map(funcionario.get(), FuncionarioDTO.class);
+        return ResponseEntity.ok(funcionarioDTO);
     }
 
     @PutMapping("/edit/{id}")
     public ResponseEntity<Object> updateFuncionario(@PathVariable(value = "id") Long id,
-            @RequestBody @Validated UsuarioDTO usuarioDTO) {
+            @RequestBody @Validated FuncionarioDTO FuncionarioDTO) {
         try {
-            Optional<Usuario> funcionarioOptional = funcionarioRepository.findById(id);
+            Optional<Funcionario> funcionarioOptional = funcionarioRepository.findById(id);
             if (funcionarioOptional.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body("Funcionário com ID " + id + " não encontrado.");
             }
 
-            Usuario funcionario = funcionarioOptional.get();
+            Funcionario funcionario = funcionarioOptional.get();
 
-            Optional<Usuario> usuarioComMesmoEmail = funcionarioRepository.findByEmail(usuarioDTO.getEmail());
+            Optional<Funcionario> usuarioComMesmoEmail = funcionarioRepository.findByEmail(FuncionarioDTO.getEmail());
             if (usuarioComMesmoEmail.isPresent() && !usuarioComMesmoEmail.get().getId().equals(id)) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body("O email informado já está em uso por outro funcionário.");
             }
 
-            funcionario.setCpf(usuarioDTO.getCpf());
-            funcionario.setNome(usuarioDTO.getNome());
-            funcionario.setEmail(usuarioDTO.getEmail());
-            funcionario.setPerfil(usuarioDTO.getPerfil());
-            funcionario.setTelefone(usuarioDTO.getTelefone());
+            funcionario.setCpf(FuncionarioDTO.getCpf());
+            funcionario.setNome(FuncionarioDTO.getNome());
+            funcionario.setEmail(FuncionarioDTO.getEmail());
+            funcionario.setPerfil(FuncionarioDTO.getPerfil());
+            funcionario.setTelefone(FuncionarioDTO.getTelefone());
 
-            if (usuarioDTO.getSenha() != null && !usuarioDTO.getSenha().isEmpty()) {
-                funcionario.setSenha(hashSenha(usuarioDTO.getSenha(), funcionario.getSalt()));
+            if (FuncionarioDTO.getSenha() != null && !FuncionarioDTO.getSenha().isEmpty()) {
+                funcionario.setSenha(hashSenha(FuncionarioDTO.getSenha(), funcionario.getSalt()));
             }
 
             funcionarioRepository.save(funcionario);
 
-            UsuarioDTO updatedFuncionarioDTO = modelMapper.map(funcionario, UsuarioDTO.class);
+            FuncionarioDTO updatedFuncionarioDTO = modelMapper.map(funcionario, FuncionarioDTO.class);
             updatedFuncionarioDTO.setSenha(null);
 
             return ResponseEntity.ok(updatedFuncionarioDTO);
@@ -132,7 +133,7 @@ public class FuncionarioRest {
 
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Object> deleteFuncionario(@PathVariable(value = "id") Long id) {
-        Optional<Usuario> funcionarioOptional = funcionarioRepository.findById(id);
+        Optional<Funcionario> funcionarioOptional = funcionarioRepository.findById(id);
         if (funcionarioOptional.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Funcionário com ID " + id + " não encontrado.");

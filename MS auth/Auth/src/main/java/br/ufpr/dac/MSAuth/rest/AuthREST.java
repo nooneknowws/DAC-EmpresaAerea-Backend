@@ -9,16 +9,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import br.ufpr.dac.MSAuth.model.dto.LoginDTO;
 import br.ufpr.dac.MSAuth.service.JwtService;
+import br.ufpr.dac.MSAuth.model.AuthSession;
+import br.ufpr.dac.MSAuth.repository.AuthSessionRepository;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @CrossOrigin
 @RestController
 public class AuthREST {
-
-    private static final Logger logger = LoggerFactory.getLogger(AuthREST.class);
+	private static final Logger logger = LoggerFactory.getLogger(AuthREST.class);
+	private static final int RABBIT_TIMEOUT_SECONDS = 10;
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
@@ -26,44 +29,166 @@ public class AuthREST {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private AuthSessionRepository authSessionRepository;
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDTO loginDTO) {
-        logger.info("Received login request for email: {}", loginDTO.getEmail());
+        if (!isValidLoginRequest(loginDTO)) {
+            logger.warn("Invalid login request received");
+            return createErrorResponse("Invalid login credentials", 400);
+        }
 
-        rabbitTemplate.convertAndSend("saga-exchange", "auth.request", loginDTO);
-        logger.info("Sent login request to saga-exchange with routing key 'auth.request'");
+        logger.info("Processing login request for email: {}", loginDTO.getEmail());
 
-        String responseQueue = "auth.response";
-        Message responseMessage = rabbitTemplate.receive(responseQueue, TimeUnit.SECONDS.toMillis(10));
-
-        if (responseMessage != null) {
-            @SuppressWarnings("unchecked")
-			Map<String, String> response = (Map<String, String>) rabbitTemplate.getMessageConverter()
-                    .fromMessage(responseMessage);
-            logger.info("Received response from RabbitMQ: {}", response);
-
-            if ("success".equals(response.get("status"))) {
-                // Generate JWT token
-            	String id = response.get("id");
-                String email = response.get("email");
-                String token = jwtService.generateToken(email);
-                String perfil = response.get("perfil");
-                Map<String, String> replyMessage = new HashMap<>();
-                replyMessage.put("id", id);
-                replyMessage.put("status", "success");
-                replyMessage.put("token", token);
-                replyMessage.put("email", email);
-                replyMessage.put("perfil", perfil);
-                return ResponseEntity.ok(replyMessage);
+        Optional<AuthSession> existingSession = authSessionRepository.findByEmail(loginDTO.getEmail());
+        if (existingSession.isPresent()) {
+            AuthSession session = existingSession.get();
+            if (jwtService.validateToken(session.getToken())) {
+                logger.warn("Attempted duplicate login for email: {}", loginDTO.getEmail());
+                return createErrorResponse("User already logged in", 409);
             } else {
-                Map<String, String> errorMessage = new HashMap<>();
-                errorMessage.put("status", "error");
-                errorMessage.put("message", response.get("message"));
-                return ResponseEntity.status(401).body(errorMessage);
+                logger.info("Cleaning up expired session for email: {}", loginDTO.getEmail());
+                authSessionRepository.delete(session);
             }
+        }
+
+        Map<String, String> authResponse = authenticateViaRabbitMQ(loginDTO);
+        if (authResponse == null) {
+            return createErrorResponse("Authentication service unavailable", 504);
+        }
+
+        if ("success".equals(authResponse.get("status"))) {
+            return handleSuccessfulAuth(authResponse);
         } else {
-            logger.warn("No response from RabbitMQ within the timeout period");
-            return ResponseEntity.status(504).body("No response from authentication service");
+            return createErrorResponse(
+                authResponse.getOrDefault("message", "Authentication failed"), 
+                401
+            );
+        }
+    }
+
+    private boolean isValidLoginRequest(LoginDTO loginDTO) {
+        return loginDTO != null 
+            && loginDTO.getEmail() != null 
+            && !loginDTO.getEmail().trim().isEmpty()
+            && loginDTO.getSenha() != null 
+            && !loginDTO.getSenha().trim().isEmpty();
+    }
+
+    private Map<String, String> authenticateViaRabbitMQ(LoginDTO loginDTO) {
+        try {
+            rabbitTemplate.convertAndSend("saga-exchange", "auth.request", loginDTO);
+            logger.info("Sent authentication request to RabbitMQ");
+
+            Message responseMessage = rabbitTemplate.receive(
+                "auth.response", 
+                TimeUnit.SECONDS.toMillis(RABBIT_TIMEOUT_SECONDS)
+            );
+
+            if (responseMessage == null) {
+                logger.error("No response received from authentication service");
+                return null;
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, String> response = (Map<String, String>) rabbitTemplate
+                .getMessageConverter()
+                .fromMessage(responseMessage);
+
+            logger.info("Received authentication response for email: {}", loginDTO.getEmail());
+            return response;
+
+        } catch (Exception e) {
+            logger.error("Error during RabbitMQ communication: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private ResponseEntity<?> handleSuccessfulAuth(Map<String, String> authResponse) {
+        try {
+            String id = authResponse.get("id");
+            String email = authResponse.get("email");
+            String perfil = authResponse.get("perfil");
+            String statusFunc = authResponse.get("statusFunc");
+            
+            String token = jwtService.generateToken(email);
+
+            AuthSession newSession = new AuthSession(id, email, token, perfil, statusFunc);
+            authSessionRepository.save(newSession);
+            logger.info("Created new session for user: {}", email);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("id", id);
+            response.put("status", "success");
+            response.put("token", token);
+            response.put("email", email);
+            response.put("perfil", perfil);
+            response.put("statusFunc", statusFunc);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error creating user session: {}", e.getMessage());
+            return createErrorResponse("Error creating user session", 500);
+        }
+    }
+
+    private ResponseEntity<?> createErrorResponse(String message, int statusCode) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("status", "error");
+        errorResponse.put("message", message);
+        return ResponseEntity.status(statusCode).body(errorResponse);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody Map<String, String> request) {
+        String token = request.get("token");
+        
+        if (token == null || token.trim().isEmpty()) {
+            logger.warn("Logout attempt with missing token");
+            return ResponseEntity.badRequest()
+                .body(Map.of("message", "Token is required"));
+        }
+
+        try {
+            if (jwtService.validateToken(token)) {
+                String userEmail = jwtService.getEmailFromToken(token);
+                logger.info("Processing logout for user: {}", userEmail);
+                
+                boolean sessionRemoved = false;
+                try {
+                    var session = authSessionRepository.findByToken(token);
+                    if (session.isPresent()) {
+                        authSessionRepository.delete(session.get());
+                        sessionRemoved = true;
+                        logger.info("Successfully deleted session for user: {}", userEmail);
+                    } else {
+                        var emailSession = authSessionRepository.findByEmail(userEmail);
+                        if (emailSession.isPresent()) {
+                            authSessionRepository.delete(emailSession.get());
+                            sessionRemoved = true;
+                            logger.info("Successfully deleted session using email for user: {}", userEmail);
+                        }
+                    }
+                } catch (Exception dbError) {
+                    logger.error("Database error during session cleanup: {}", dbError.getMessage());
+                }
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "Logout successful");
+                response.put("sessionCleanedUp", sessionRemoved);
+                
+                return ResponseEntity.ok(response);
+            } else {
+                logger.warn("Logout attempted with invalid token");
+                return ResponseEntity.status(401)
+                    .body(Map.of("message", "Invalid token"));
+            }
+        } catch (Exception e) {
+            logger.error("Error during logout", e);
+            return ResponseEntity.status(500)
+                .body(Map.of("message", "Error processing logout"));
         }
     }
 }

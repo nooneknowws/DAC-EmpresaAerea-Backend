@@ -9,67 +9,142 @@ var cookieParser = require("cookie-parser");
 var bodyParser = require("body-parser");
 var logger = require("morgan");
 const helmet = require("helmet");
+const nodemailer = require("nodemailer");
 
 app.use(bodyParser.urlencoded({ extended: false }));
-
 app.use(bodyParser.json());
-const authServiceProxy = httpProxy("http://localhost:5000/auth/login", {
+
+const authServiceProxy = httpProxy("http://localhost:5000", {
+  proxyReqPathResolver: function (req) {
+      // Determine which endpoint to hit based on the request path
+      return req.path === '/login' ? '/login' : '/logout';
+  },
   proxyReqBodyDecorator: function (bodyContent, srcReq) {
-    try {
-      const loginRequest = {
-        email: bodyContent.email,
-        senha: bodyContent.senha,
-      };
-      console.log("Login request:", loginRequest);
-      return loginRequest; 
-    } catch (e) {
-      console.log("- ERROR: " + e);
-    }
-    return bodyContent; 
+      try {
+          // Handle login requests
+          if (srcReq.path === '/login') {
+              const loginRequest = {
+                  email: bodyContent.email,
+                  senha: bodyContent.senha,
+              };
+              console.log("Processing login request");
+              return loginRequest;
+          }
+
+          if (srcReq.path === '/logout') {
+              const logoutRequest = {
+                  token: bodyContent.token
+              };
+              console.log("Processing logout request");
+              return logoutRequest;
+          }
+          
+          return bodyContent;
+      } catch (e) {
+          console.log("Error processing request:", e);
+          return bodyContent;
+      }
   },
   proxyReqOptDecorator: function (proxyReqOpts, srcReq) {
-    proxyReqOpts.headers["Content-Type"] = "application/json";
-    proxyReqOpts.method = "POST";
-    return proxyReqOpts;
+      proxyReqOpts.headers["Content-Type"] = "application/json";
+      proxyReqOpts.method = srcReq.method;
+      return proxyReqOpts;
   },
   userResDecorator: function (proxyRes, proxyResData, userReq, userRes) {
-    const responseString = proxyResData.toString('utf8');
-    console.log("Received response from Auth MS:", responseString);
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Received response from Auth service:`, responseString);
 
-    try {
-      const jsonResponse = JSON.parse(responseString);
-      return jsonResponse; 
-    } catch (error) {
-      console.log("Response is not valid JSON:", error);
-      return responseString;
-    }
+      try {
+          const jsonResponse = JSON.parse(responseString);
+          return jsonResponse;
+      } catch (error) {
+          console.log("Error parsing response:", error);
+          return responseString;
+      }
   }
 });
-
-app.post("/login", (req, res, next) => {
-  authServiceProxy(req, res, next);
-});
-
-
-  
 
 const voosServiceProxy = httpProxy("http://localhost:5001");
 const reservasServiceProxy = httpProxy("http://localhost:5002");
 const clientesServiceProxy = httpProxy("http://localhost:5003");
 const FuncionarioServiceProxy = httpProxy("http://localhost:5007");
 
+async function mailServer(req, res, next) {
+  try {
+    console.log(process.env.EMAIL_PASSWORD)
+    
+    console.log(process.env.EMAIL_USER)
+    const { nome, email } = req.body;
+    const senha = Math.floor(1000 + Math.random() * 9000).toString();
+
+    if (!nome || !email) {
+      return res.status(400).json({ 
+        error: "Nome e email são obrigatórios para cadastro" 
+      });
+    }
+
+   
+    const transporter = nodemailer.createTransport({
+      host: "smtp.sendgrid.net",
+      port: 587,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      }
+    });
+
+    const mailOptions = {
+      from: "empresaaerea.dac.ufpr@gmail.com",
+      to: email,
+      subject: "Bem-vindo(a) a nossa companhia de passagens aereas!",
+      text: `Olá ${nome},\n\nSeu cadastro foi realizado com sucesso!\n\nSua senha de acesso é: ${senha}\n\nAtenciosamente,\nEquipe 4 DAC - UFPR`
+    };
+    await transporter.sendMail(mailOptions);
+
+    console.log(`Email enviado para ${email} com a senha: ${senha}`);
+    req.body.senha = senha;
+
+    next();
+  } catch (error) {
+    console.error("Erro ao enviar email:", error);
+    return res.status(500).json({
+      error: "Erro ao enviar o email de boas-vindas",
+      details: error.message
+    });
+  }
+}
+
+function verifyPerfil(req, res, next) {
+  const perfil = req.query.perfil;
+  const status = req.query.statusFunc;
+
+  if (perfil === "Funcionario" && status === "ATIVO") {
+    next();
+  } else {
+    return res.status(403).json({
+      auth: false,
+      message: "Você não tem permissão para acessar esses dados."
+    });
+  }
+}
+
 function verifyJWT(req, res, next) {
   const token = req.headers["x-access-token"];
-  if (!token)
-    return res
-      .status(401)
-      .json({ auth: false, message: "token não fornecido" });
+  
+  if (!token) {
+    return res.status(401).json({ 
+      auth: false, 
+      message: "Token não fornecido" 
+    });
+  }
 
   jwt.verify(token, process.env.SECRET, function (err, decoded) {
-    if (err)
-      return res
-        .status(500)
-        .jjson({ auth: false, message: "falha ao autenticar token." });
+    if (err) {
+      return res.status(401).json({ 
+        auth: false, 
+        message: "Falha ao autenticar token." 
+      });
+    }
 
     req.userId = decoded.id;
     next();
@@ -77,12 +152,22 @@ function verifyJWT(req, res, next) {
 }
 
 app.post("/login", (req, res, next) => {
+  if (!req.body.email || !req.body.senha) {
+    return res.status(400).json({ 
+      error: "Email e senha são obrigatórios" 
+    });
+  }
   authServiceProxy(req, res, next);
 });
 
-app.post("/logout", function (req, res) {
-  //isso aqui só anula o login, bem simples
-  res.json({ auth: false, token: null });
+app.post("/logout", (req, res, next) => {
+  if (!req.body.token) {
+      return res.status(400).json({
+          status: "error",
+          message: "Token não fornecido no corpo da requisição"
+      });
+  }
+  authServiceProxy(req, res, next);
 });
 
 //aqui vai os HTTP da vida, que comunica com os MS->
@@ -129,28 +214,35 @@ app.get("/reservas", verifyJWT, (req, res, next) => {
 });
 
 // MS-CLIENTES
-app.get("/clientes", verifyJWT, (req, res, next) => {
+//cadastro
+app.post("/clientes/cadastro", mailServer, (req, res, next) => {
   clientesServiceProxy(req, res, next);
 });
+//busca
+app.get("/clientes/busca", verifyJWT, verifyPerfil, (req, res, next) => {
+  clientesServiceProxy(req, res, next);
+  console.log("Query Params:", req.query);
+});
+
 
 // MS-FUNCIONARIOS
   // registrar novo funcionario
   // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada das reqs
-app.post("/employee/register", verifyJWT, (req, res, next) => {
-  FuncionarioServiceProxy(req, res, next);
-});
+  app.post("/funcionarios/cadastro", mailServer, (req, res, next) => {
+    FuncionarioServiceProxy(req, res, next);
+  });
   // listar todos os funcionario
-app.get("/employee", verifyJWT, (req, res, next) => {
+app.get("/funcionarios", verifyJWT, (req, res, next) => {
   FuncionarioServiceProxy(req, res, next);
 });
   // listar func p/ id
-app.get("/employee/{id}", (req, res, next) => {
+app.get("/funcionarios/{id}", (req, res, next) => {
   FuncionarioServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/employee/${req.params.id}`,
   });
 });
   // update do funcionario
-app.put("/employee/edit/{id}", (req, res, next) => {
+app.put("/funcionarios/edit/{id}", (req, res, next) => {
   FuncionarioServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/employee/edit/${req.params.id}`,
 
@@ -158,7 +250,7 @@ app.put("/employee/edit/{id}", (req, res, next) => {
   });
 });
 // remover funcionario
-app.delete("/employee/delete/{id}", (req, res, next) => {
+app.delete("/funcionarios/delete/{id}", (req, res, next) => {
   FuncionarioServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/employee/delete/${req.params.id}`,
   });
