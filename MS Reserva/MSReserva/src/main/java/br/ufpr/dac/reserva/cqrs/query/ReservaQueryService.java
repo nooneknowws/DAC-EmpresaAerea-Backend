@@ -13,13 +13,32 @@ public class ReservaQueryService {
 
     @Autowired
     private ReservaQueryRepository reservaQueryRepository;
-
+    
+    public List<ReservaDTO> listarTodasReservas() {
+        return reservaQueryRepository.findAll().stream()
+            .map(reserva -> new ReservaDTO(
+                reserva.getId(),
+                reserva.getDataHora(),
+                reserva.getAeroportoOrigemId(),
+                reserva.getAeroportoDestinoId(),
+                reserva.getValor(),
+                reserva.getMilhas(),
+                reserva.getStatus().name(),
+                reserva.getVooId(),
+                reserva.getClienteId(),
+                reserva.getHistoricoAlteracaoEstado().stream()
+                    .map(HistoricoAlteracaoEstado::toDTO)
+                    .toList()
+            ))
+            .toList();
+    }
+    
     public Optional<ReservaDTO> consultarReserva(Long id) {
         return reservaQueryRepository.findById(id).map(reserva -> new ReservaDTO(
             reserva.getId(),
             reserva.getDataHora(),
-            reserva.getOrigem(),
-            reserva.getDestino(),
+            reserva.getAeroportoOrigemId(),
+            reserva.getAeroportoDestinoId(),
             reserva.getValor(),
             reserva.getMilhas(),
             reserva.getStatus().name(),
@@ -36,8 +55,8 @@ public class ReservaQueryService {
             .map(reserva -> new ReservaDTO(
                 reserva.getId(),
                 reserva.getDataHora(),
-                reserva.getOrigem(),
-                reserva.getDestino(),
+                reserva.getAeroportoOrigemId(),
+                reserva.getAeroportoDestinoId(),
                 reserva.getValor(),
                 reserva.getMilhas(),
                 reserva.getStatus().name(),
@@ -55,8 +74,8 @@ public class ReservaQueryService {
             .map(reserva -> new ReservaDTO(
                 reserva.getId(),
                 reserva.getDataHora(),
-                reserva.getOrigem(),
-                reserva.getDestino(),
+                reserva.getAeroportoOrigemId(),
+                reserva.getAeroportoDestinoId(),
                 reserva.getValor(),
                 reserva.getMilhas(),
                 reserva.getStatus().name(),

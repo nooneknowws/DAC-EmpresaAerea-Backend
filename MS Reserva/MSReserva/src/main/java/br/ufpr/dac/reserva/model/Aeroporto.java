@@ -1,14 +1,26 @@
 package br.ufpr.dac.reserva.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
 @Embeddable
 public class Aeroporto {
+    @Column(name = "aeroporto_id")
     private Long id;
+    
+    @Column(name = "aeroporto_codigo")
     private String codigo;
+    
+    @Column(name = "aeroporto_nome")
     private String nome;
+    
+    @Column(name = "aeroporto_cidade")
     private String cidade;
+    
+    @Column(name = "aeroporto_estado")
     private String estado;
+    
+    @Column(name = "aeroporto_pais")
     private String pais;
 
     public Long getId() { return id; }

@@ -73,7 +73,7 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
 });
 
 const voosServiceProxy = httpProxy("http://localhost:5001");
-const reservasServiceProxy = httpProxy("http://localhost:5002");
+const reservasServiceProxy = httpProxy("http://localhost:5005");
 const clientesServiceProxy = httpProxy("http://localhost:5003");
 const FuncionarioServiceProxy = httpProxy("http://localhost:5007")
 
@@ -223,6 +223,18 @@ app.post("/logout", (req, res, next) => {
 app.get("/api/aeroportos", verifyJWT, (req,res,next) => {
   voosServiceProxy(req,res, next)
 })
+// POST aeroportos
+app.post("/api/aeroportos", verifyJWT, (req, res, next) => {
+  voosServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => '/api/aeroportos/',
+    proxyReqBodyDecorator: (bodyContent) => bodyContent,
+    proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+      proxyReqOpts.headers['Content-Type'] = 'application/json';
+      proxyReqOpts.method = 'POST';
+      return proxyReqOpts;
+    }
+  });
+});
 // Rota para listar todos os voos (GET)
 app.get("/voos", (req, res, next) => {
   // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada
@@ -278,7 +290,9 @@ app.delete("/voos/:id", (req, res, next) => {
 app.get("/reservas", verifyJWT, (req, res, next) => {
   reservasServiceProxy(req, res, next);
 });
-
+app.post("/reservas", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, next);
+});
 // MS-CLIENTES
 //cadastro
 app.post("/clientes/cadastro", mailServer, (req, res, next) => {
