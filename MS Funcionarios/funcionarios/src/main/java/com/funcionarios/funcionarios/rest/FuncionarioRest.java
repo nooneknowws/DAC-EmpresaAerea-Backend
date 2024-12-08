@@ -30,6 +30,9 @@ import com.funcionarios.funcionarios.models.dto.FuncionarioDTO;
 import com.funcionarios.funcionarios.repository.FuncionarioRepository;
 import com.funcionarios.funcionarios.services.FuncionarioService;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 @RestController
 @CrossOrigin
 @RequestMapping("/funcionarios")
@@ -64,27 +67,29 @@ public class FuncionarioRest {
     }
 
     @PostMapping("/cadastro")
-    public ResponseEntity<Object> inserirFuncionario(@RequestBody @Validated FuncionarioDTO funcionarioDTO) {
+    public ResponseEntity<?> inserirFuncionario(@RequestBody @Validated FuncionarioDTO funcionarioDTO) {
         try {
             Map<String, Boolean> availability = funcionarioService
                 .verifyRegistrationAvailability(funcionarioDTO.getEmail(), funcionarioDTO.getCpf())
                 .get(30, TimeUnit.SECONDS);
 
             List<String> conflicts = new ArrayList<>();
-            
+
             if (!availability.get("emailAvailable")) {
                 logger.warn("Email already exists: {}", funcionarioDTO.getEmail());
-                conflicts.add("E-mail já está em uso.");
+                conflicts.add("Email já está em uso");
             }
 
             if (!availability.get("cpfAvailable")) {
                 logger.warn("CPF already exists: {}", funcionarioDTO.getCpf());
-                conflicts.add("CPF já está cadastrado.");
+                conflicts.add("CPF já está cadastrado");
             }
 
             if (!conflicts.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(conflicts);
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "CONFLICT");
+                response.put("messages", conflicts);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
             }
 
             Funcionario usuario = modelMapper.map(funcionarioDTO, Funcionario.class);
@@ -100,11 +105,11 @@ public class FuncionarioRest {
         } catch (TimeoutException e) {
             logger.error("Verification timeout for email: {}", funcionarioDTO.getEmail());
             return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
-                .body("Timeout na verificação.");
+                .body(new ErrorResponse("Timeout na verificação", e.getMessage()));
         } catch (Exception e) {
             logger.error("Error in registration: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Erro interno no servidor.");
+                .body(new ErrorResponse("Erro durante o cadastro", e.getMessage()));
         }
     }
 
@@ -216,4 +221,13 @@ public class FuncionarioRest {
             throw new RuntimeException("Erro ao criptografar a senha", e);
         }
     }
+    @Getter
+    @AllArgsConstructor
+    class ErrorResponse {
+        public ErrorResponse(String string, String message2) {
+		}
+		private String message;
+        private String details;
+    }
+
 }

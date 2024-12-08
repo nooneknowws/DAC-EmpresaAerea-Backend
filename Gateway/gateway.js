@@ -296,7 +296,7 @@ app.get("/clientes/busca/:id", verifyJWT, (req, res, next) => {
       console.log(`Response from client service: ${responseString}`);
       try {
         const jsonResponse = JSON.parse(responseString);
-        return jsonResponse; // Return the parsed JSON
+        return jsonResponse; 
       } catch (error) {
         console.error("Error parsing client service response:", error);
         return {
