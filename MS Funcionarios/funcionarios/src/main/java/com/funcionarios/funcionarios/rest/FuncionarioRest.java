@@ -3,6 +3,7 @@ package com.funcionarios.funcionarios.rest;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -68,17 +69,22 @@ public class FuncionarioRest {
             Map<String, Boolean> availability = funcionarioService
                 .verifyRegistrationAvailability(funcionarioDTO.getEmail(), funcionarioDTO.getCpf())
                 .get(30, TimeUnit.SECONDS);
+
+            List<String> conflicts = new ArrayList<>();
             
             if (!availability.get("emailAvailable")) {
                 logger.warn("Email already exists: {}", funcionarioDTO.getEmail());
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("E-mail já está em uso.");
+                conflicts.add("E-mail já está em uso.");
             }
-            
+
             if (!availability.get("cpfAvailable")) {
                 logger.warn("CPF already exists: {}", funcionarioDTO.getCpf());
+                conflicts.add("CPF já está cadastrado.");
+            }
+
+            if (!conflicts.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("CPF já está cadastrado.");
+                    .body(conflicts);
             }
 
             Funcionario usuario = modelMapper.map(funcionarioDTO, Funcionario.class);
