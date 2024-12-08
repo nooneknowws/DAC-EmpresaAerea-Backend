@@ -4,13 +4,13 @@ import jakarta.persistence.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
+@Table(name = "usuarios")  // Good practice to specify table name
 public class Usuario {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -38,11 +38,13 @@ public class Usuario {
 
     private String telefone;
 
+    @Column(name = "saldo_milhas")
     private int saldoMilhas;
 
-    @ElementCollection
-    private List<String> milhas = new ArrayList<>();
+    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<Milhas> milhas = new HashSet<>();
 
+    // Constructors
     public Usuario() {}
 
     public Usuario(String cpf, String nome, String email, String senha, Endereco endereco, String perfil, String telefone) {
@@ -50,13 +52,14 @@ public class Usuario {
         this.nome = nome;
         this.email = email;
         this.salt = gerarSalt();
-        this.senha = hashSenha(senha, this.salt); 
+        this.senha = hashSenha(senha, this.salt);
         this.endereco = endereco;
         this.perfil = perfil;
         this.telefone = telefone;
         this.saldoMilhas = 0;
     }
 
+    // Password handling methods
     private String gerarSalt() {
         byte[] salt = new byte[16];
         SecureRandom random = new SecureRandom();
@@ -67,104 +70,113 @@ public class Usuario {
     private String hashSenha(String senha, String salt) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            md.update(Base64.getDecoder().decode(salt)); // Aplica o salt
+            md.update(Base64.getDecoder().decode(salt));
             byte[] hashedPassword = md.digest(senha.getBytes());
             return Base64.getEncoder().encodeToString(hashedPassword);
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Erro ao criptografar a senha", e);
         }
     }
+
     public boolean verificarSenha(String senhaEntrada) {
         String senhaEntradaHash = hashSenha(senhaEntrada, this.salt);
         return senhaEntradaHash.equals(this.senha);
     }
 
-	public Long getId() {
-		return id;
-	}
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	public String getCpf() {
-		return cpf;
-	}
+    public String getCpf() {
+        return cpf;
+    }
 
-	public void setCpf(String cpf) {
-		this.cpf = cpf;
-	}
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
 
-	public String getNome() {
-		return nome;
-	}
+    public String getNome() {
+        return nome;
+    }
 
-	public void setNome(String nome) {
-		this.nome = nome;
-	}
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
 
-	public String getEmail() {
-		return email;
-	}
+    public String getEmail() {
+        return email;
+    }
 
-	public void setEmail(String email) {
-		this.email = email;
-	}
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-	public String getSenha() {
-		return senha;
-	}
+    public String getSenha() {
+        return senha;
+    }
+    
+    public void setInitialPassword(String senha) {
+        this.salt = gerarSalt();
+        this.senha = hashSenha(senha, this.salt);
+    }
+    
+    public void setSenha(String senha) {
+        if (this.salt == null) {
+            setInitialPassword(senha);
+        } else {
+            this.senha = hashSenha(senha, this.salt);
+        }
+    }
+    public String getSalt() {
+        return salt;
+    }
 
-	public void setSenha(String senha) {
-		this.senha = senha;
-	}
+    public void setSalt(String salt) {
+        this.salt = salt;
+    }
 
-	public String getSalt() {
-		return salt;
-	}
+    public Endereco getEndereco() {
+        return endereco;
+    }
 
-	public void setSalt(String salt) {
-		this.salt = salt;
-	}
+    public void setEndereco(Endereco endereco) {
+        this.endereco = endereco;
+    }
 
-	public Endereco getEndereco() {
-		return endereco;
-	}
+    public String getPerfil() {
+        return perfil;
+    }
 
-	public void setEndereco(Endereco endereco) {
-		this.endereco = endereco;
-	}
+    public void setPerfil(String perfil) {
+        this.perfil = perfil;
+    }
 
-	public String getPerfil() {
-		return perfil;
-	}
+    public String getTelefone() {
+        return telefone;
+    }
 
-	public void setPerfil(String perfil) {
-		this.perfil = perfil;
-	}
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
 
-	public String getTelefone() {
-		return telefone;
-	}
+    public int getSaldoMilhas() {
+        return saldoMilhas;
+    }
 
-	public void setTelefone(String telefone) {
-		this.telefone = telefone;
-	}
+    public void setSaldoMilhas(int saldoMilhas) {
+        this.saldoMilhas = saldoMilhas;
+    }
 
-	public int getSaldoMilhas() {
-		return saldoMilhas;
-	}
+    public Set<Milhas> getMilhas() {
+        return milhas;
+    }
 
-	public void setSaldoMilhas(int saldoMilhas) {
-		this.saldoMilhas = saldoMilhas;
-	}
-
-	public List<String> getMilhas() {
-		return milhas;
-	}
-
-	public void setMilhas(List<String> milhas) {
-		this.milhas = milhas;
-	}
-
+    public void setMilhas(Set<Milhas> milhas) {
+        this.milhas = milhas;
+    }
 }

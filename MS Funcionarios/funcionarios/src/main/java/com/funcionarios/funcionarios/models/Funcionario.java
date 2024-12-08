@@ -12,7 +12,7 @@ import java.util.List;
 public class Funcionario {
 
     public Funcionario(Long id, String cpf, String nome, String email, String senha, String salt, Endereco endereco,
-			String perfil, String status, String telefone) {
+			String perfil, String funcStatus, String telefone) {
 		super();
 		this.id = id;
 		this.cpf = cpf;
@@ -22,7 +22,7 @@ public class Funcionario {
         this.senha = hashSenha(senha, this.salt); 
 		this.endereco = endereco;
 		this.perfil = perfil;
-		this.status = status;
+		this.funcStatus = funcStatus;
 		this.telefone = telefone;
 	}
 
@@ -52,7 +52,7 @@ public class Funcionario {
     private String perfil;
     
     @Column(nullable = false)
-    private String status;
+    private String funcStatus;
     
     @Column
     private String telefone;
@@ -153,12 +153,12 @@ public class Funcionario {
 		this.telefone = telefone;
 	}
 
-	public String getStatus() {
-		return status;
+	public String getfuncStatus() {
+		return funcStatus;
 	}
 
-	public void setStatus(String status) {
-		this.status = status;
+	public void setfuncStatus(String funcStatus) {
+		this.funcStatus = funcStatus;
 	}
 
 }

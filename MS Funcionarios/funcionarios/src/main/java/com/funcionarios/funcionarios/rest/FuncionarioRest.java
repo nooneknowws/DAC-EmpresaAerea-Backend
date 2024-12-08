@@ -4,28 +4,30 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.modelmapper.ModelMapper;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import com.funcionarios.funcionarios.models.Funcionario;
 import com.funcionarios.funcionarios.models.dto.FuncionarioDTO;
-import com.funcionarios.funcionarios.models.dto.FuncionarioDTO;
 import com.funcionarios.funcionarios.repository.FuncionarioRepository;
 import com.funcionarios.funcionarios.services.FuncionarioService;
-
-import jakarta.transaction.Transactional;
 
 @RestController
 @CrossOrigin
@@ -38,15 +40,45 @@ public class FuncionarioRest {
 
     @Autowired
     private FuncionarioService funcionarioService;
+    
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     private final ModelMapper modelMapper = new ModelMapper();
+    
+    @RabbitListener(queues = "employee.email.check")
+    public void checkExistence(Map<String, String> request) {
+        String email = request.get("email");
+        String cpf = request.get("cpf");
+        
+        boolean emailExists = funcionarioRepository.findByEmail(email).isPresent();
+        boolean cpfExists = funcionarioRepository.findByCpf(cpf).isPresent();
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("email", email);
+        response.put("emailExists", String.valueOf(emailExists));
+        response.put("cpfExists", String.valueOf(cpfExists));
+        
+        rabbitTemplate.convertAndSend("saga-exchange", "employee.email.check.response", response);
+    }
 
     @PostMapping("/cadastro")
     public ResponseEntity<Object> inserirFuncionario(@RequestBody @Validated FuncionarioDTO funcionarioDTO) {
         try {
-            if (funcionarioRepository.findByEmail(funcionarioDTO.getEmail()).isPresent()) {
+            Map<String, Boolean> availability = funcionarioService
+                .verifyRegistrationAvailability(funcionarioDTO.getEmail(), funcionarioDTO.getCpf())
+                .get(30, TimeUnit.SECONDS);
+            
+            if (!availability.get("emailAvailable")) {
+                logger.warn("Email already exists: {}", funcionarioDTO.getEmail());
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body("E-mail já está em uso.");
+                    .body("E-mail já está em uso.");
+            }
+            
+            if (!availability.get("cpfAvailable")) {
+                logger.warn("CPF already exists: {}", funcionarioDTO.getCpf());
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("CPF já está cadastrado.");
             }
 
             Funcionario usuario = modelMapper.map(funcionarioDTO, Funcionario.class);
@@ -56,17 +88,17 @@ public class FuncionarioRest {
             funcionarioRepository.save(usuario);
 
             FuncionarioDTO savedFuncionarioDTO = modelMapper.map(usuario, FuncionarioDTO.class);
-            savedFuncionarioDTO.setSenha(null); 
+            savedFuncionarioDTO.setSenha(null);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(savedFuncionarioDTO);
-        } catch (DataIntegrityViolationException e) {
-            logger.error("Erro de integridade de dados: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Erro ao cadastrar o funcionário: CPF ou Email duplicado.");
+        } catch (TimeoutException e) {
+            logger.error("Verification timeout for email: {}", funcionarioDTO.getEmail());
+            return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
+                .body("Timeout na verificação.");
         } catch (Exception e) {
-            logger.error("Erro inesperado: {}", e.getMessage());
+            logger.error("Error in registration: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erro interno no servidor. Tente novamente mais tarde.");
+                .body("Erro interno no servidor.");
         }
     }
 
@@ -80,7 +112,7 @@ public class FuncionarioRest {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Object> getOneFuncionario(@PathVariable(value = "id") Long id) {
+    public ResponseEntity<Object> getOneFuncionario(@PathVariable(value = "id") Long id){
         Optional<Funcionario> funcionario = funcionarioRepository.findById(id);
         if (funcionario.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -130,16 +162,35 @@ public class FuncionarioRest {
                     .body("Erro interno ao atualizar o funcionário. Detalhes: " + e.getMessage());
         }
     }
+    @PutMapping("/status/{id}")
+    public ResponseEntity<Object> updateFuncionarioStatus(@PathVariable(value = "id") Long id) {
+        try {
+            Optional<Funcionario> funcionarioOptional = funcionarioRepository.findById(id);
+            if (funcionarioOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Funcionário com ID " + id + " não encontrado.");
+            }
+            Funcionario funcionario = funcionarioOptional.get();
+            
+            String currentStatus = funcionario.getfuncStatus();
+            String newStatus = "ATIVO".equals(currentStatus) ? "INATIVO" : "ATIVO";
+            
+            funcionario.setfuncStatus(newStatus);
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<Object> deleteFuncionario(@PathVariable(value = "id") Long id) {
-        Optional<Funcionario> funcionarioOptional = funcionarioRepository.findById(id);
-        if (funcionarioOptional.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Funcionário com ID " + id + " não encontrado.");
+            funcionarioRepository.save(funcionario);
+
+            FuncionarioDTO updatedFuncionarioDTO = modelMapper.map(funcionario, FuncionarioDTO.class);
+          
+            logger.info("Status do funcionário {} alterado de {} para {}", 
+                id, currentStatus, newStatus);
+
+            return ResponseEntity.ok(updatedFuncionarioDTO);
+            
+        } catch (Exception e) {
+            logger.error("Erro ao atualizar status do funcionário com ID {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro interno ao atualizar o status do funcionário. Detalhes: " + e.getMessage());
         }
-        funcionarioRepository.deleteById(id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     private String gerarSalt() {

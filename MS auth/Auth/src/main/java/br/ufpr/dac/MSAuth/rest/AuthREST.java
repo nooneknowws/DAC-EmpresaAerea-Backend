@@ -191,4 +191,28 @@ public class AuthREST {
                 .body(Map.of("message", "Error processing logout"));
         }
     }
+    @GetMapping("/session/check")
+    public ResponseEntity<?> checkSession(@RequestHeader("x-access-token") String token) {
+        if (token == null) {
+            return ResponseEntity.status(401).body(Map.of("status", "error", "message", "No token provided"));
+        }
+
+        try {
+            if (jwtService.validateToken(token)) {
+                String email = jwtService.getEmailFromToken(token);
+                Optional<AuthSession> session = authSessionRepository.findByEmail(email);
+                
+                if (session.isPresent() && session.get().getToken().equals(token)) {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("status", "success");
+                    response.put("token", token);
+                    response.put("user", session.get());
+                    return ResponseEntity.ok(response);
+                }
+            }
+            return ResponseEntity.status(401).body(Map.of("status", "error", "message", "Invalid session"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("status", "error", "message", "Error checking session"));
+        }
+    }
 }

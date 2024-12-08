@@ -5,7 +5,7 @@ import java.util.List;
 public class FuncionarioDTO {
 
     public FuncionarioDTO(Long id, String cpf, String nome, String email, EnderecoDTO endereco, String perfil,
-			String telefone, String senha, String status) {
+			String telefone, String senha, String funcStatus) {
 		super();
 		this.id = id;
 		this.cpf = cpf;
@@ -15,7 +15,7 @@ public class FuncionarioDTO {
 		this.perfil = perfil;
 		this.telefone = telefone;
 		this.senha = senha;
-		this.status = status;
+		this.funcStatus = funcStatus;
 	}
 
 	private Long id;
@@ -26,7 +26,7 @@ public class FuncionarioDTO {
     private String perfil;
     private String telefone;
     private String senha;
-    private String status;
+    private String funcStatus;
 
     public FuncionarioDTO() {}
 
@@ -94,11 +94,11 @@ public class FuncionarioDTO {
 		this.senha = senha;
 	}
 
-	public String getStatus() {
-		return status;
+	public String getfuncStatus() {
+		return funcStatus;
 	}
 
-	public void setStatus(String status) {
-		this.status = status;
+	public void setfuncStatus(String funcStatus) {
+		this.funcStatus = funcStatus;
 	}
 }
