@@ -96,4 +96,11 @@ public class ClienteRest {
             .map(e -> modelMapper.map(e, UsuarioDTO.class))
             .collect(Collectors.toList());
     }
+    @GetMapping("/clientes/busca/{id}")
+    public ResponseEntity<UsuarioDTO> buscarPorId(@PathVariable("id") Long id) {
+        return clienteRepository.findById(id)
+            .map(usuario -> ResponseEntity.ok(modelMapper.map(usuario, UsuarioDTO.class)))
+            .orElse(ResponseEntity.notFound().build());
+    }
+
 }

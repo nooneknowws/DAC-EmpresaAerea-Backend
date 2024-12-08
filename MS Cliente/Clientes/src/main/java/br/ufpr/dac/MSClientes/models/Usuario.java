@@ -8,6 +8,8 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 @Entity
 @Table(name = "usuarios")  // Good practice to specify table name
 public class Usuario {
@@ -40,8 +42,9 @@ public class Usuario {
 
     @Column(name = "saldo_milhas")
     private int saldoMilhas;
-
-    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    
+    @OneToMany(mappedBy = "cliente",fetch = FetchType.LAZY)
+    @JsonManagedReference
     private Set<Milhas> milhas = new HashSet<>();
 
     // Constructors

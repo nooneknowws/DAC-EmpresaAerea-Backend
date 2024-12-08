@@ -45,8 +45,8 @@ public class AuthREST {
         if (existingSession.isPresent()) {
             AuthSession session = existingSession.get();
             if (jwtService.validateToken(session.getToken())) {
-                logger.warn("Attempted duplicate login for email: {}", loginDTO.getEmail());
-                return createErrorResponse("User already logged in", 409);
+                logger.info("Duplicate login detected for email: {}. Deleting old session and continuing with new login.", loginDTO.getEmail());
+                authSessionRepository.delete(session);
             } else {
                 logger.info("Cleaning up expired session for email: {}", loginDTO.getEmail());
                 authSessionRepository.delete(session);
@@ -67,6 +67,7 @@ public class AuthREST {
             );
         }
     }
+
 
     private boolean isValidLoginRequest(LoginDTO loginDTO) {
         return loginDTO != null 

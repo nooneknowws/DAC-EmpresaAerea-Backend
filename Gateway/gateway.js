@@ -74,31 +74,8 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
 
 const voosServiceProxy = httpProxy("http://localhost:5001");
 const reservasServiceProxy = httpProxy("http://localhost:5002");
-const clientesServiceProxy = httpProxy("http://localhost:5003", {
-  proxyReqBodyDecorator: function (bodyContent, srcReq) {
-    if (srcReq.generatedPassword) {
-      console.log("Proxy request body IF:", bodyContent);
-      return {
-        ...bodyContent,
-        senha: srcReq.generatedPassword,
-      };
-    }
-    console.log("Proxy request body:", bodyContent);
-    return bodyContent;
-  },
-});
-
-const FuncionarioServiceProxy = httpProxy("http://localhost:5007", {
-  proxyReqBodyDecorator: function (bodyContent, srcReq) {
-    if (srcReq.generatedPassword) {
-      return {
-        ...bodyContent,
-        senha: srcReq.generatedPassword,
-      };
-    }
-    return bodyContent;
-  },
-});
+const clientesServiceProxy = httpProxy("http://localhost:5003");
+const FuncionarioServiceProxy = httpProxy("http://localhost:5007")
 
 async function mailServer(req, res, next) {
   const originalEnd = res.end;
@@ -291,8 +268,66 @@ app.post("/clientes/cadastro", mailServer, (req, res, next) => {
 //busca
 app.get("/clientes/busca", verifyJWT, verifyPerfil, (req, res, next) => {
   clientesServiceProxy(req, res, next);
-  console.log("Query Params:", req.query);
 });
+app.get("/clientes/busca/:id", verifyJWT, (req, res, next) => {
+  clientesServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/clientes/busca/${req.params.id}`, // Forward the correct path
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString("utf8");
+      console.log(`Response from client service: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse; // Return the parsed JSON
+      } catch (error) {
+        console.error("Error parsing client service response:", error);
+        return {
+          error: "Invalid response from client service",
+        };
+      }
+    },
+  });
+});
+//Adicionar milhas
+app.post("/api/milhas", verifyJWT, (req, res, next) => {
+  clientesServiceProxy(req, res, {
+    proxyReqPathResolver: () => '/api/milhas',
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from milhas transaction: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing milhas transaction response:', error);
+        return {
+          error: 'Invalid response from milhas service'
+        };
+      }
+    }
+  });
+});
+
+//Transações por cliente
+app.get("/api/milhas/:clienteId", verifyJWT, (req, res, next) => {
+  clientesServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/api/milhas/milhas/${req.params.clienteId}`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from milhas service: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing milhas service response:', error);
+        return {
+          error: 'Invalid response from milhas service'
+        };
+      }
+    }
+  });
+});
+
+
 
 // MS-FUNCIONARIOS
 app.post("/funcionarios/cadastro", mailServer, (req, res, next) => {
