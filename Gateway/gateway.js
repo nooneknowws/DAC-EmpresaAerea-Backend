@@ -278,6 +278,27 @@ app.put("/voos/:id", (req, res, next) => {
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
+//FILTRO DE VOOS POR AEROPORTO ORIGEM/DESTINO
+app.get("/voos/filter", (req, res, next) => {
+  voosServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => {
+      return `/voos/filter?origem=${req.query.origem}&destino=${req.query.destino}`;
+    },
+    userResDecorator: function(proxyRes, proxyResData, userReq, userRes) {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from voos filter service:`, responseString);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing voos filter response:', error);
+        return {
+          error: 'Invalid response from voos service'
+        };
+      }
+    }
+  });
+});
 
 // Rota para remover um voo (DELETE)
 app.delete("/voos/:id", (req, res, next) => {
