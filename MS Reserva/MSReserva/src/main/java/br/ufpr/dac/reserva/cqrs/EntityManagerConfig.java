@@ -12,23 +12,34 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import jakarta.persistence.EntityManagerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.sql.DataSource;
 
 @Configuration
 @EnableTransactionManagement
 public class EntityManagerConfig {
-
+	
     // Write EntityManagerFactory
-    @Primary
-    @Bean(name = "writeEntityManagerFactory")
-    LocalContainerEntityManagerFactoryBean writeEntityManagerFactory(
-            EntityManagerFactoryBuilder builder, @Qualifier("writeDataSource") DataSource writeDataSource) {
-        return builder
-                .dataSource(writeDataSource)
-                .packages("br.ufpr.dac.reserva.model")  // Entities package
-                .persistenceUnit("write")
-                .build();
-    }
+	 @Primary
+	    @Bean(name = "writeEntityManagerFactory")
+	    LocalContainerEntityManagerFactoryBean writeEntityManagerFactory(
+	            EntityManagerFactoryBuilder builder, 
+	            @Qualifier("writeDataSource") DataSource writeDataSource) {
+	        
+	        Map<String, String> properties = new HashMap<>();
+	        properties.put("hibernate.hbm2ddl.auto", "update");
+	        properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+	        properties.put("hibernate.show_sql", "true");
+
+	        return builder
+	                .dataSource(writeDataSource)
+	                .packages("br.ufpr.dac.reserva.model")
+	                .properties(properties)
+	                .persistenceUnit("write")
+	                .build();
+	    }
 
     @Primary
     @Bean(name = "writeTransactionManager")
@@ -40,10 +51,18 @@ public class EntityManagerConfig {
     // Read EntityManagerFactory
     @Bean(name = "readEntityManagerFactory")
     LocalContainerEntityManagerFactoryBean readEntityManagerFactory(
-            EntityManagerFactoryBuilder builder, @Qualifier("readDataSource") DataSource readDataSource) {
+            EntityManagerFactoryBuilder builder, 
+            @Qualifier("readDataSource") DataSource readDataSource) {
+        
+        Map<String, String> properties = new HashMap<>();
+        properties.put("hibernate.hbm2ddl.auto", "update");
+        properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+        properties.put("hibernate.show_sql", "true");
+
         return builder
                 .dataSource(readDataSource)
-                .packages("br.ufpr.dac.reserva.model")  // Entities package
+                .packages("br.ufpr.dac.reserva.model")
+                .properties(properties)
                 .persistenceUnit("read")
                 .build();
     }
