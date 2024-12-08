@@ -23,7 +23,16 @@ public class VooController {
             List<Voo> voos = vooService.listarTodosVoos();
             return voos.stream().map(VooDTO::new).toList();
         }
-    
+        
+        @GetMapping("/filter")
+        public List<VooDTO> getVoosFiltrados(
+            @RequestParam("origem") String origemCodigo,
+            @RequestParam("destino") String destinoCodigo
+        ) {
+            List<Voo> voos = vooService.findByOrigemAndDestino(origemCodigo, destinoCodigo);
+            return voos.stream().map(VooDTO::new).toList();
+        }
+        
         @GetMapping("/{id}")
         public ResponseEntity<VooDTO> listarUmVoo(@PathVariable("id") Long id) {
             Voo voo = vooService.listarUmVoo(id);
