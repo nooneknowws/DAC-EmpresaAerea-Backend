@@ -4,21 +4,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class CreateVooDTO {
+
+    private String codigoVoo;   
     private LocalDateTime dataHoraPartida;
     private String codigoOrigem;
     private String codigoDestino;
     private BigDecimal valorPassagem;
     private int quantidadeAssentos;
     private int quantidadePassageiros;
-
-    public CreateVooDTO() {
-        this.dataHoraPartida = getDataHoraPartida();
-        this.codigoOrigem = getCodigoOrigem();
-        this.codigoDestino = getCodigoDestino();
-        this.valorPassagem = getValorPassagem();
-        this.quantidadeAssentos = getQuantidadeAssentos();
-        this.quantidadePassageiros = getQuantidadePassageiros();
-    }
+    private String status; 
 
     public LocalDateTime getDataHoraPartida() {
         return dataHoraPartida;
@@ -67,4 +61,20 @@ public class CreateVooDTO {
     public void setQuantidadePassageiros(int quantidadePassageiros) {
         this.quantidadePassageiros = quantidadePassageiros;
     }
+
+	public String getCodigoVoo() {
+		return codigoVoo;
+	}
+
+	public void setCodigoVoo(String codigoVoo) {
+		this.codigoVoo = codigoVoo;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
 }

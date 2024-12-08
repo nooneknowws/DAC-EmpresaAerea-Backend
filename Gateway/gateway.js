@@ -15,7 +15,7 @@ const nodemailer = require("nodemailer");
 app.use(
   cors({
     origin: ["http://localhost:4200"], 
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "x-access-token", "Authorization"],
     credentials: true, 
   })
@@ -219,6 +219,10 @@ app.post("/logout", (req, res, next) => {
 
 //aqui vai os HTTP da vida, que comunica com os MS->
 // MS-VOOS
+//Listar os aeroportos
+app.get("/api/aeroportos", verifyJWT, (req,res,next) => {
+  voosServiceProxy(req,res, next)
+})
 // Rota para listar todos os voos (GET)
 app.get("/voos", (req, res, next) => {
   // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada
@@ -238,7 +242,22 @@ app.post("/voos", (req, res, next) => {
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
+// status
+app.patch("/voos/:id/status", cors(), (req, res, next) => {
+  console.log('Received PATCH request for flight status update:', {
+    flightId: req.params.id,
+    status: req.query.status
+  });
 
+  voosServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => `/voos/${req.params.id}/status?status=${req.query.status}`,
+    proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+      proxyReqOpts.headers['Content-Type'] = 'application/json';
+      proxyReqOpts.method = 'PATCH';
+      return proxyReqOpts;
+    }
+  });
+});
 // Rota para editar um voo (PUT)
 app.put("/voos/:id", (req, res, next) => {
   voosServiceProxy(req, res, next, {
@@ -383,6 +402,7 @@ app.options(
     credentials: true,
   })
 );
+app.options('/voos/:id', cors());
 
 var server = http.createServer(app);
 server.listen(3000);

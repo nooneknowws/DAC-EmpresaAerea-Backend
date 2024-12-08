@@ -8,10 +8,37 @@ import java.time.LocalDateTime;
 @Table(name = "voos")
 public class Voo {
 
-    @Id
+
+
+	public Voo() {
+		super();
+	}
+
+
+
+	public Voo(Long id, String codigoVoo, LocalDateTime dataHoraPartida, Aeroporto origem, Aeroporto destino,
+			BigDecimal valorPassagem, int quantidadeAssentos, int quantidadePassageiros, String status) {
+		super();
+		this.id = id;
+		this.codigoVoo = codigoVoo;
+		this.dataHoraPartida = dataHoraPartida;
+		this.origem = origem;
+		this.destino = destino;
+		this.valorPassagem = valorPassagem;
+		this.quantidadeAssentos = quantidadeAssentos;
+		this.quantidadePassageiros = quantidadePassageiros;
+		this.status = status;
+	}
+
+
+
+	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    
+    @Column(name = "codigo_voo")
+    private String codigoVoo;
+    
     @Column(name = "data_hora_partida")
     private LocalDateTime dataHoraPartida;
 
@@ -108,6 +135,18 @@ public class Voo {
     public void setStatus(String status) {
         this.status = status;
     }
+
+
+
+	public String getCodigoVoo() {
+		return codigoVoo;
+	}
+
+
+
+	public void setCodigoVoo(String codigoVoo) {
+		this.codigoVoo = codigoVoo;
+	}
 
     
 }

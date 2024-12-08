@@ -6,6 +6,7 @@ import br.ufpr.dac.voos.models.Voo;
 
 public class VooDTO {
     private long id;
+    private String codigoVoo;     
     private String dataHoraPartida;
     private AeroportoDTO origem;
     private AeroportoDTO destino;
@@ -15,6 +16,7 @@ public class VooDTO {
     private String status;
 
     public VooDTO(Voo voo) {
+    	this.codigoVoo = voo.getCodigoVoo();
         this.id = voo.getId();
         this.dataHoraPartida = voo.getDataHoraPartida().toString();
         this.origem = new AeroportoDTO(voo.getOrigem());
@@ -56,5 +58,45 @@ public class VooDTO {
     public String getStatus() {
         return status;
     }
+
+	public String getCodigoVoo() {
+		return codigoVoo;
+	}
+
+	public void setCodigoVoo(String codigoVoo) {
+		this.codigoVoo = codigoVoo;
+	}
+
+	public void setId(long id) {
+		this.id = id;
+	}
+
+	public void setDataHoraPartida(String dataHoraPartida) {
+		this.dataHoraPartida = dataHoraPartida;
+	}
+
+	public void setOrigem(AeroportoDTO origem) {
+		this.origem = origem;
+	}
+
+	public void setDestino(AeroportoDTO destino) {
+		this.destino = destino;
+	}
+
+	public void setValorPassagem(BigDecimal valorPassagem) {
+		this.valorPassagem = valorPassagem;
+	}
+
+	public void setQuantidadeAssentos(int quantidadeAssentos) {
+		this.quantidadeAssentos = quantidadeAssentos;
+	}
+
+	public void setQuantidadePassageiros(int quantidadePassageiros) {
+		this.quantidadePassageiros = quantidadePassageiros;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
 
 }
