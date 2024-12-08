@@ -8,8 +8,8 @@ import br.ufpr.dac.reserva.model.Aeroporto;
 public record ReservaDTO(
     Long id,
     LocalDateTime dataHora,
-    Aeroporto origem,
-    Aeroporto destino,
+    Long aeroportoOrigemId,
+    Long aeroportoDestinoId,
     Double valor,
     Integer milhas,
     String status,

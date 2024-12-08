@@ -29,6 +29,12 @@ public class ReservaController {
         return ResponseEntity.ok(reserva);
     }
     
+    @GetMapping
+    public ResponseEntity<List<ReservaDTO>> listarTodasReservas() {
+        List<ReservaDTO> reservas = queryService.listarTodasReservas();
+        return ResponseEntity.ok(reservas);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ReservaDTO> consultarReserva(@PathVariable Long id) {
         Optional<ReservaDTO> reserva = queryService.consultarReserva(id);

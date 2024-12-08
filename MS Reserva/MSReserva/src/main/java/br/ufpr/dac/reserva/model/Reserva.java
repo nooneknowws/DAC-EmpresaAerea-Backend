@@ -13,20 +13,21 @@ public class Reserva {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    
+    @Column(name = "data_hora")
     private LocalDateTime dataHora;
-
-    @Embedded
-    private Aeroporto origem;
-
-    @Embedded
-    private Aeroporto destino;
+    
+    @Column(name = "aeroporto_origem_id")
+    private Long aeroportoOrigemId;
+    
+    @Column(name = "aeroporto_destino_id")
+    private Long aeroportoDestinoId;
 
     private Double valor;
     private Integer milhas;
     private String codigoReserva;
 
-	@Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.STRING)
     private StatusReserva status;
 
     private Long vooId;
@@ -43,8 +44,8 @@ public class Reserva {
         return new ReservaDTO(
             id,
             dataHora,
-            origem,
-            destino,
+            aeroportoOrigemId,
+            aeroportoDestinoId,
             valor,
             milhas,
             status.toString(),
@@ -60,11 +61,11 @@ public class Reserva {
     public LocalDateTime getDataHora() { return dataHora; }
     public void setDataHora(LocalDateTime dataHora) { this.dataHora = dataHora; }
 
-    public Aeroporto getOrigem() { return origem; }
-    public void setOrigem(Aeroporto origem) { this.origem = origem; }
+    public Long getAeroportoOrigemId() { return aeroportoOrigemId; }
+    public void setAeroportoOrigemId(Long aeroportoOrigemId) { this.aeroportoOrigemId = aeroportoOrigemId; }
 
-    public Aeroporto getDestino() { return destino; }
-    public void setDestino(Aeroporto destino) { this.destino = destino; }
+    public Long getAeroportoDestinoId() { return aeroportoDestinoId; }
+    public void setAeroportoDestinoId(Long aeroportoDestinoId) { this.aeroportoDestinoId = aeroportoDestinoId; }
 
     public Double getValor() { return valor; }
     public void setValor(Double valor) { this.valor = valor; }

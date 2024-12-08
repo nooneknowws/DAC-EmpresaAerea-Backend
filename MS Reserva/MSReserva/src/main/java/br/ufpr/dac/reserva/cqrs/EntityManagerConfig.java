@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
@@ -21,25 +22,33 @@ import javax.sql.DataSource;
 @EnableTransactionManagement
 public class EntityManagerConfig {
 	
-    // Write EntityManagerFactory
-	 @Primary
-	    @Bean(name = "writeEntityManagerFactory")
-	    LocalContainerEntityManagerFactoryBean writeEntityManagerFactory(
-	            EntityManagerFactoryBuilder builder, 
-	            @Qualifier("writeDataSource") DataSource writeDataSource) {
-	        
-	        Map<String, String> properties = new HashMap<>();
-	        properties.put("hibernate.hbm2ddl.auto", "update");
-	        properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-	        properties.put("hibernate.show_sql", "true");
+	@Bean
+    public EntityManagerFactoryBuilder entityManagerFactoryBuilder() {
+        return new EntityManagerFactoryBuilder(
+            new HibernateJpaVendorAdapter(), 
+            new HashMap<>(), 
+            null
+        );
+    }
 
-	        return builder
-	                .dataSource(writeDataSource)
-	                .packages("br.ufpr.dac.reserva.model")
-	                .properties(properties)
-	                .persistenceUnit("write")
-	                .build();
-	    }
+    @Primary
+    @Bean(name = "writeEntityManagerFactory")
+    LocalContainerEntityManagerFactoryBean writeEntityManagerFactory(
+            EntityManagerFactoryBuilder builder,
+            @Qualifier("writeDataSource") DataSource writeDataSource) {
+        
+        Map<String, String> properties = new HashMap<>();
+        properties.put("hibernate.hbm2ddl.auto", "update");
+        properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+        properties.put("hibernate.show_sql", "true");
+        
+        return builder
+                .dataSource(writeDataSource)
+                .packages("br.ufpr.dac.reserva.model")
+                .properties(properties)
+                .persistenceUnit("write")
+                .build();
+    }
 
     @Primary
     @Bean(name = "writeTransactionManager")

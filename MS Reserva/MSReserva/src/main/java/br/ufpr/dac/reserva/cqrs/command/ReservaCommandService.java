@@ -20,8 +20,8 @@ public class ReservaCommandService {
     public Reserva criarReserva(CriarReservaDTO dto) {
         Reserva reserva = new Reserva();
         reserva.setDataHora(LocalDateTime.now());
-        reserva.setOrigem(dto.origem());
-        reserva.setDestino(dto.destino());
+        reserva.setAeroportoOrigemId(dto.aeroportoOrigemId());
+        reserva.setAeroportoDestinoId(dto.aeroportoDestinoId());
         reserva.setValor(dto.valor());
         reserva.setMilhas(dto.milhas());
         reserva.setStatus(StatusReserva.PENDENTE);
