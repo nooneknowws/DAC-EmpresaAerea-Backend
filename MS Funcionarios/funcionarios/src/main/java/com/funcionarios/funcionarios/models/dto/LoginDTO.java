@@ -6,16 +6,18 @@ public class LoginDTO implements Serializable {
     private Long id; 
     private String email;
     private String senha;
-    private String perfil; 
+    private String perfil;
+    private String statusFunc;
 
     public LoginDTO() {
         super();
     }
-    public LoginDTO(String email, String senha, Long id, String perfil) {
+    public LoginDTO(String email, String senha, Long id, String perfil, String statusFunc) {
         this.email = email;
         this.senha = senha;
         this.id = id;
         this.perfil = perfil;
+        this.statusFunc = statusFunc;
     }
     public Long getId() {
         return id;
@@ -48,5 +50,10 @@ public class LoginDTO implements Serializable {
     public void setPerfil(String perfil) {
         this.perfil = perfil;
     }
+	public String getStatus() {
+		return statusFunc;
+	}
+	public void setStatus(String statusFunc) {
+		this.statusFunc = statusFunc;
+	}
 }
-

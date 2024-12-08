@@ -21,19 +21,26 @@ public class SagaOrquestrador {
     @Autowired
     private AmqpTemplate rabbitTemplate;
 
+    // To track the verification statuses
+    private Map<String, VerificationStatus> verificationStatusMap = new HashMap<>();
+
     @RabbitListener(queues = "auth.request", ackMode = "MANUAL")
     public void handleAuthSaga(LoginDTO loginDTO, Message message, Channel channel) {
         try {
-            logger.info("Received login request from 'auth.request' queue for email: {}", loginDTO.getEmail());
-            rabbitTemplate.convertAndSend("saga-exchange", "client.verification", loginDTO);
-            logger.info("Sent verification request to saga-exchange with routing key 'client.verification'");
+            String email = loginDTO.getEmail();
+            logger.info("Received login request for email: {}", email);
 
-            
+            // Reset the status for this email
+            verificationStatusMap.put(email, new VerificationStatus());
+
+            rabbitTemplate.convertAndSend("saga-exchange", "client.verification", loginDTO);
+            rabbitTemplate.convertAndSend("saga-exchange", "employee.verification", loginDTO);
+
+            logger.info("Sent verification requests for email: {} to client and employee verification queues", email);
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
         } catch (Exception e) {
             logger.error("Error handling auth saga", e);
             try {
-                
                 channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
             } catch (IOException ioException) {
                 logger.error("Error during message rejection", ioException);
@@ -43,21 +50,66 @@ public class SagaOrquestrador {
 
     @RabbitListener(queues = "client.verification.response", ackMode = "MANUAL")
     public void handleClientVerificationResponse(Map<String, String> response, Message message, Channel channel) {
-        try {
-            logger.info("Received client verification response for email: {} with status: {}", response.get("email"), response.get("status"));
-            rabbitTemplate.convertAndSend("saga-exchange", "auth.response", response);
-            logger.info("Sent response to saga-exchange with routing key 'auth.response'");
+        processResponse(response, "client", channel, message);
+    }
 
-            
+    @RabbitListener(queues = "employee.verification.response", ackMode = "MANUAL")
+    public void handleEmployeeVerificationResponse(Map<String, String> response, Message message, Channel channel) {
+        processResponse(response, "employee", channel, message);
+    }
+
+    private void processResponse(Map<String, String> response, String type, Channel channel, Message message) {
+        try {
+            String email = response.get("email");
+            logger.info("Received {} verification response for email: {}", type, email);
+
+            VerificationStatus status = verificationStatusMap.get(email);
+            if (status == null) {
+                status = new VerificationStatus();
+                verificationStatusMap.put(email, status);
+            }
+
+            if ("success".equals(response.get("status"))) {
+                // If success, send success response immediately
+                rabbitTemplate.convertAndSend("saga-exchange", "auth.response", response);
+                logger.info("Authentication successful for email: {}", email);
+                verificationStatusMap.remove(email); // Clear the tracking data
+            } else {
+                logger.info("Email not found in {} service: {}", type, email);
+
+                // Update the status as failure for this service
+                if ("client".equals(type)) {
+                    status.clientVerified = false;
+                } else if ("employee".equals(type)) {
+                    status.employeeVerified = false;
+                }
+
+                // Check if both verifications failed
+                if (!status.clientVerified && !status.employeeVerified) {
+                    // Send failure response to auth.response
+                    Map<String, String> errorResponse = new HashMap<>();
+                    errorResponse.put("email", email);
+                    errorResponse.put("status", "failure");
+                    errorResponse.put("message", "Email not found in both client and employee services.");
+                    rabbitTemplate.convertAndSend("saga-exchange", "auth.response", errorResponse);
+                    logger.info("Sent failure response for email: {}", email);
+                    verificationStatusMap.remove(email); // Clear the tracking data
+                }
+            }
+
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
         } catch (Exception e) {
-            logger.error("Error handling client verification response", e);
+            logger.error("Error handling {} verification response", type, e);
             try {
-                
                 channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
             } catch (IOException ioException) {
                 logger.error("Error during message rejection", ioException);
             }
         }
     }
+    private static class VerificationStatus {
+        boolean clientVerified = true;  // Default is true until proven otherwise
+        boolean employeeVerified = true; // Default is true until proven otherwise
+    }
 }
+

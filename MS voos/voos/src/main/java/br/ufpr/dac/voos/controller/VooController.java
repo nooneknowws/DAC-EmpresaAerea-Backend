@@ -35,12 +35,18 @@ public class VooController {
     
         @PostMapping
         public ResponseEntity<Voo> inserirVoo(@RequestBody CreateVooDTO vooDTO) {
-            Voo novoVoo = new Voo();
+            if (vooDTO.getCodigoOrigem() == null || vooDTO.getCodigoDestino() == null) {
+                throw new IllegalArgumentException("Códigos de origem e destino são obrigatórios");
+            }
+            
+            Voo novoVoo = new Voo(null, null, null, null, null, null, 0, 0, null);
+            novoVoo.setCodigoVoo(vooDTO.getCodigoVoo());
             novoVoo.setDataHoraPartida(vooDTO.getDataHoraPartida());
             novoVoo.setValorPassagem(vooDTO.getValorPassagem());
             novoVoo.setQuantidadeAssentos(vooDTO.getQuantidadeAssentos());
             novoVoo.setQuantidadePassageiros(vooDTO.getQuantidadePassageiros());
-    
+            novoVoo.setStatus(vooDTO.getStatus());
+
             Voo vooCriado = vooService.inserirVoo(novoVoo, vooDTO.getCodigoOrigem(), vooDTO.getCodigoDestino());
             return ResponseEntity.ok(vooCriado);
         }
