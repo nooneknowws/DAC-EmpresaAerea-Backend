@@ -21,7 +21,6 @@ public class SagaOrquestrador {
     @Autowired
     private AmqpTemplate rabbitTemplate;
 
-    // To track the verification statuses
     private Map<String, VerificationStatus> verificationStatusMap = new HashMap<>();
 
     @RabbitListener(queues = "auth.request", ackMode = "MANUAL")
@@ -30,7 +29,6 @@ public class SagaOrquestrador {
             String email = loginDTO.getEmail();
             logger.info("Received login request for email: {}", email);
 
-            // Reset the status for this email
             verificationStatusMap.put(email, new VerificationStatus());
 
             rabbitTemplate.convertAndSend("saga-exchange", "client.verification", loginDTO);
@@ -70,30 +68,25 @@ public class SagaOrquestrador {
             }
 
             if ("success".equals(response.get("status"))) {
-                // If success, send success response immediately
                 rabbitTemplate.convertAndSend("saga-exchange", "auth.response", response);
                 logger.info("Authentication successful for email: {}", email);
-                verificationStatusMap.remove(email); // Clear the tracking data
+                verificationStatusMap.remove(email); 
             } else {
                 logger.info("Email not found in {} service: {}", type, email);
 
-                // Update the status as failure for this service
                 if ("client".equals(type)) {
                     status.clientVerified = false;
                 } else if ("employee".equals(type)) {
                     status.employeeVerified = false;
                 }
-
-                // Check if both verifications failed
                 if (!status.clientVerified && !status.employeeVerified) {
-                    // Send failure response to auth.response
                     Map<String, String> errorResponse = new HashMap<>();
                     errorResponse.put("email", email);
                     errorResponse.put("status", "failure");
                     errorResponse.put("message", "Email not found in both client and employee services.");
                     rabbitTemplate.convertAndSend("saga-exchange", "auth.response", errorResponse);
                     logger.info("Sent failure response for email: {}", email);
-                    verificationStatusMap.remove(email); // Clear the tracking data
+                    verificationStatusMap.remove(email); 
                 }
             }
 
@@ -108,8 +101,8 @@ public class SagaOrquestrador {
         }
     }
     private static class VerificationStatus {
-        boolean clientVerified = true;  // Default is true until proven otherwise
-        boolean employeeVerified = true; // Default is true until proven otherwise
+        boolean clientVerified = true;  
+        boolean employeeVerified = true; 
     }
 }
 

@@ -18,7 +18,10 @@ public class VooService {
 
         @Autowired
         private AeroportoRepository aeroportoRepository;
-
+        
+        public List<Voo> findByOrigemAndDestino(String origemCodigo, String destinoCodigo) {
+            return vooRepository.findByOrigemCodigoAndDestinoCodigo(origemCodigo, destinoCodigo);
+        }
 
         // Get all
         public List<Voo> listarTodosVoos() {
