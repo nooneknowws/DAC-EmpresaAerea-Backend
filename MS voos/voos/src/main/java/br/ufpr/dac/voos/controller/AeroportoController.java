@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import jakarta.persistence.EntityManager;
+import org.springframework.transaction.annotation.Transactional;
+
 
 import org.springframework.validation.annotation.Validated;
 
@@ -19,6 +21,7 @@ public class AeroportoController {
     private EntityManager entityManager;
 
     @PostMapping
+    @Transactional
     public ResponseEntity<?> createAeroporto(@RequestBody Aeroporto aeroporto) {
         try {
             if (aeroporto.getCodigo() == null || aeroporto.getNome() == null || 
