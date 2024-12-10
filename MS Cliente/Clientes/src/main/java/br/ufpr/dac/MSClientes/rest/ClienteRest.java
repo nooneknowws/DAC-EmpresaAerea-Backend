@@ -1,5 +1,6 @@
 package br.ufpr.dac.MSClientes.rest;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,8 @@ import br.ufpr.dac.MSClientes.models.Usuario;
 import br.ufpr.dac.MSClientes.models.dto.UsuarioDTO;
 import br.ufpr.dac.MSClientes.repository.ClienteRepo;
 import br.ufpr.dac.MSClientes.services.ClienteService;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 @RestController
 @CrossOrigin
@@ -33,6 +36,7 @@ public class ClienteRest {
     private RabbitTemplate rabbitTemplate;
     @Autowired
     private ClienteService clienteService;
+    
     private final ModelMapper modelMapper = new ModelMapper();
     
     @RabbitListener(queues = "client.email.check")  
@@ -56,36 +60,43 @@ public class ClienteRest {
             Map<String, Boolean> availability = clienteService
                 .verifyRegistrationAvailability(usuarioDTO.getEmail(), usuarioDTO.getCpf())
                 .get(30, TimeUnit.SECONDS);
+
+            List<String> conflicts = new ArrayList<>();
             
             if (!availability.get("emailAvailable")) {
                 logger.warn("Email already exists: {}", usuarioDTO.getEmail());
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("Email já está em uso");
+                conflicts.add("Email já está em uso");
             }
-            
+
             if (!availability.get("cpfAvailable")) {
                 logger.warn("CPF already exists: {}", usuarioDTO.getCpf());
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("CPF já está cadastrado");
+                conflicts.add("CPF já está cadastrado");
             }
-            
+
+            if (!conflicts.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "CONFLICT");
+                response.put("messages", conflicts);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+
             Usuario usuario = modelMapper.map(usuarioDTO, Usuario.class);
             usuario.setInitialPassword(usuarioDTO.getSenha());
-            
+
             Usuario savedUsuario = clienteRepository.save(usuario);
             UsuarioDTO savedClienteDTO = modelMapper.map(savedUsuario, UsuarioDTO.class);
             savedClienteDTO.setSenha(null);
-            
+
             return ResponseEntity.status(HttpStatus.CREATED).body(savedClienteDTO);
-            
+
         } catch (TimeoutException e) {
             logger.error("Verification timeout for email: {}", usuarioDTO.getEmail());
             return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
-                .body("Timeout na verificação");
+                .body(new ErrorResponse("Timeout na verificação", e.getMessage()));
         } catch (Exception e) {
             logger.error("Error in registration: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Erro durante o cadastro: " + e.getMessage());
+                .body(new ErrorResponse("Erro durante o cadastro", e.getMessage()));
         }
     }
     
@@ -102,5 +113,14 @@ public class ClienteRest {
             .map(usuario -> ResponseEntity.ok(modelMapper.map(usuario, UsuarioDTO.class)))
             .orElse(ResponseEntity.notFound().build());
     }
+    @Getter
+    @AllArgsConstructor
+    class ErrorResponse {
+        public ErrorResponse(String string, String message2) {
+		}
+		private String message;
+        private String details;
+    }
+
 
 }

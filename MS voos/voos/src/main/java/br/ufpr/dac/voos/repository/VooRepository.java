@@ -16,4 +16,10 @@ public interface VooRepository extends JpaRepository<Voo, Long> {
 
     @Query("SELECT v FROM Voo v JOIN v.origem JOIN v.destino WHERE v.id = :id")
     Optional<Voo> findByIdWithOrigemAndDestino(@Param("id") Long id);
+    
+    @Query("SELECT v FROM Voo v WHERE v.origem.codigo = :origemCodigo AND v.destino.codigo = :destinoCodigo")
+    List<Voo> findByOrigemCodigoAndDestinoCodigo(
+        @Param("origemCodigo") String origemCodigo, 
+        @Param("destinoCodigo") String destinoCodigo
+    );
 }

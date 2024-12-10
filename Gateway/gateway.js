@@ -73,7 +73,7 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
 });
 
 const voosServiceProxy = httpProxy("http://localhost:5001");
-const reservasServiceProxy = httpProxy("http://localhost:5002");
+const reservasServiceProxy = httpProxy("http://localhost:5005");
 const clientesServiceProxy = httpProxy("http://localhost:5003");
 const FuncionarioServiceProxy = httpProxy("http://localhost:5007")
 
@@ -223,6 +223,18 @@ app.post("/logout", (req, res, next) => {
 app.get("/api/aeroportos", verifyJWT, (req,res,next) => {
   voosServiceProxy(req,res, next)
 })
+// POST aeroportos
+app.post("/api/aeroportos", verifyJWT, (req, res, next) => {
+  voosServiceProxy(req, res, next, {
+    proxyReqPathResolver: (req) => '/api/aeroportos/',
+    proxyReqBodyDecorator: (bodyContent) => bodyContent,
+    proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+      proxyReqOpts.headers['Content-Type'] = 'application/json';
+      proxyReqOpts.method = 'POST';
+      return proxyReqOpts;
+    }
+  });
+});
 // Rota para listar todos os voos (GET)
 app.get("/voos", (req, res, next) => {
   // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada
@@ -266,6 +278,27 @@ app.put("/voos/:id", (req, res, next) => {
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
+//FILTRO DE VOOS POR AEROPORTO ORIGEM/DESTINO
+app.get("/voos/filter", (req, res, next) => {
+  voosServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => {
+      return `/voos/filter?origem=${req.query.origem}&destino=${req.query.destino}`;
+    },
+    userResDecorator: function(proxyRes, proxyResData, userReq, userRes) {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from voos filter service:`, responseString);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing voos filter response:', error);
+        return {
+          error: 'Invalid response from voos service'
+        };
+      }
+    }
+  });
+});
 
 // Rota para remover um voo (DELETE)
 app.delete("/voos/:id", (req, res, next) => {
@@ -275,10 +308,44 @@ app.delete("/voos/:id", (req, res, next) => {
 });
 
 // MS-RESERVAS
-app.get("/reservas", verifyJWT, (req, res, next) => {
-  reservasServiceProxy(req, res, next);
+// GET RESERVAS POR CLIENTE
+app.get("/reservas/cliente/:clienteId", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/reservas/cliente/${req.params.clienteId}`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas service for client ${req.params.clienteId}: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas service response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
 });
-
+// CRIAR RESERVAS
+app.post("/reservas", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: () => '/reservas',
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas service: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas service response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
+});
 // MS-CLIENTES
 //cadastro
 app.post("/clientes/cadastro", mailServer, (req, res, next) => {
@@ -296,7 +363,7 @@ app.get("/clientes/busca/:id", verifyJWT, (req, res, next) => {
       console.log(`Response from client service: ${responseString}`);
       try {
         const jsonResponse = JSON.parse(responseString);
-        return jsonResponse; // Return the parsed JSON
+        return jsonResponse; 
       } catch (error) {
         console.error("Error parsing client service response:", error);
         return {
