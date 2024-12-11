@@ -1,0 +1,53 @@
+services:
+  auth:
+    build:
+      context: ./MS auth/Auth
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+
+  cliente:
+    build:
+      context: ./MS Cliente/Clientes
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5003"
+
+  funcionarios:
+    build:
+      context: ./MS Funcionarios/funcionarios
+      dockerfile: Dockerfile
+    ports:
+      - "5007:5007"
+
+  reserva:
+    build:
+      context: ./MS Reserva/MSReserva
+      dockerfile: Dockerfile
+    ports:
+      - "5005:5005"
+
+  voos:
+    build:
+      context: ./MS voos/voos
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+
+  # gateway:
+  #   build:
+  #     context: ./Gateway
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3000:3000"
+
+  # saga:
+  #   build:
+  #     context: ./SAGA
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5010:5010"
+
+networks:
+  default:
+    driver: bridge

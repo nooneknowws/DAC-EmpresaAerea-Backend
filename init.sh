@@ -51,6 +51,8 @@ gerar_docker() {
   # IMAGE_VERSION = $2
   # IMAGE_NAME="$SERVICE_NAME:$IMAGE_VERSION"
 
+  echo "Valor do parâmetro $1"
+
   IMAGE_NAME = $1
 
   echo "Buildando a imagem $IMAGE_NAME..."
@@ -63,60 +65,18 @@ gerar_docker() {
     echo "Ocorreu um erro ao criar a imagem $IMAGE_NAME"
     exit 1
   fi
-
-  #docker images | grep $SERVICE_NAME => listar as imagens
   
 }
 
-buildar_auth() {
-  cd ./MS\ auth/Auth
-  gerar_docker ms-auth
-  cd ..
-  cd ..
-}
 
-buildar_cliente() {
-  cd ./MS\ Cliente/Clientes
-  gerar_docker ms-cliente
-  cd ..
-  cd ..
-}
-
-buildar_func() {
-  cd ./MS\ Funcionarios/funcionarios
-  gerar_docker ms-funcionarios
-  cd ..
-}
-
-buildar_reserva() {
-  cd ./MS\ Reserva
-  gerar_docker ms-reserva
-  cd ..
-}
-
-buildar_voos() {
-  cd ./MS\ voos
-  gerar_docker ms-voos
-  cd ..
-}
-
-buildar_saga() {
-  cd ./SAGA
-  gerar_docker saga
-  cd ..
-}
 
 
 gerar_imagens() {
-  buildar_auth
-  # buildar_cliente
-  # buildar_func
-  # buildar_reserva
-  # buildar_voos
-  # buildar_saga
+  # AINDA A SER IMPLEMENTADO
+  docker compose up
 }
 
-#instalar_bancos
+# instalar_bancos
 # subir_bancos
 # subir_api
 gerar_imagens
