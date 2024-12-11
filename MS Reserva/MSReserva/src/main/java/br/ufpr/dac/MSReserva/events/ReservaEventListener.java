@@ -66,7 +66,6 @@ public class ReservaEventListener {
     @RabbitListener(queues = "reserva.cancelamento.response", ackMode = "MANUAL")
     public void handleCancelamentoResponse(Map<String, Object> response, Message message, Channel channel) {
         try {
-            // Safely extract and convert reservaId
             Object rawReservaId = response.get("reservaId");
             if (rawReservaId == null) {
                 logger.error("Received message without reservaId");
@@ -125,7 +124,9 @@ public class ReservaEventListener {
     
     private void populateReservaFromEvent(Reserva reserva, ReservaEvent event) {
         reserva.setId(event.getId());
+        reserva.setNomeCliente(event.getNomeCliente());
         reserva.setDataHora(event.getDataHora());
+        reserva.setDataHoraPartida(event.getDataHoraPartida());
         reserva.setAeroportoOrigem(event.getAeroportoOrigem());
         reserva.setAeroportoDestino(event.getAeroportoDestino());
         reserva.setValor(event.getValor());

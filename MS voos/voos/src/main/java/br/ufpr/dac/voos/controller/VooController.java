@@ -5,6 +5,8 @@ import br.ufpr.dac.voos.dto.UpdateVooDTO;
 import br.ufpr.dac.voos.dto.VooDTO;
 import br.ufpr.dac.voos.models.Voo;
 import br.ufpr.dac.voos.services.VooService;
+import jakarta.persistence.EntityNotFoundException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -66,6 +68,17 @@ public class VooController {
             return ResponseEntity.ok(new VooDTO(vooAtualizado));
         }
         
+        @PatchMapping("/{id}/cancelar")
+        public ResponseEntity<Void> cancelarVoo(@PathVariable("id") Long id) {
+            try {
+                vooService.atualizarStatus(id, "CANCELADO");
+                return ResponseEntity.noContent().build();
+            } catch (EntityNotFoundException e) {
+                return ResponseEntity.notFound().build();
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                return ResponseEntity.badRequest().build();
+            }
+        }
 
         @PatchMapping("/{id}/status")
         public ResponseEntity<Void> atualizarStatus(
@@ -75,8 +88,10 @@ public class VooController {
             try {
                 vooService.atualizarStatus(id, status);
                 return ResponseEntity.noContent().build();
-            } catch (RuntimeException e) {
+            } catch (EntityNotFoundException e) {
                 return ResponseEntity.notFound().build();
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                return ResponseEntity.badRequest().build();
             }
         }
     

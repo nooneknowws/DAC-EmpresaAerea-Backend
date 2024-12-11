@@ -75,7 +75,18 @@ public class ReservaController {
             return ResponseEntity.notFound().build();
         }
     }
-
+    
+    @PutMapping("/{id}/embarque")
+    public ResponseEntity<ReservaDTO> confirmarEmbarque(@PathVariable("id") Long id) {
+        try {
+            ReservaDTO reservaDTO = commandService.confirmarEmbarque(id);
+            return ResponseEntity.ok(reservaDTO);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
     
     @PutMapping("/{id}/cancelar")
     public ResponseEntity<ReservaDTO> cancelarReserva(@PathVariable("id") Long id) {
@@ -86,6 +97,18 @@ public class ReservaController {
                     .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada"));
                     
             eventPublisher.publishCancellationRequest(reserva);
+            
+            return ResponseEntity.ok(reservaDTO);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+    @PutMapping("/{id}/checkin")
+    public ResponseEntity<ReservaDTO> realizarCheckin(@PathVariable("id") Long id) {
+        try {
+            ReservaDTO reservaDTO = commandService.confirmarReserva(id);
             
             return ResponseEntity.ok(reservaDTO);
         } catch (IllegalStateException e) {

@@ -3,6 +3,8 @@ package br.ufpr.dac.voos.dto;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import br.ufpr.dac.voos.enums.StatusVoos;
+
 public class UpdateVooDTO {
     private LocalDateTime dataHoraPartida;
     private String codigoOrigem;
@@ -10,7 +12,7 @@ public class UpdateVooDTO {
     private BigDecimal valorPassagem;
     private Integer quantidadeAssentos;
     private Integer quantidadePassageiros;
-    private String status;
+    private StatusVoos status;
 
     public UpdateVooDTO() {
         this.dataHoraPartida = getDataHoraPartida();
@@ -70,11 +72,11 @@ public class UpdateVooDTO {
         this.quantidadePassageiros = quantidadePassageiros;
     }
 
-    public String getStatus() {
+    public StatusVoos getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(StatusVoos status) {
         this.status = status;
     }
 }

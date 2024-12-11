@@ -4,9 +4,11 @@ import br.ufpr.dac.voos.models.Voo;
 import br.ufpr.dac.voos.models.Aeroporto;
 import br.ufpr.dac.voos.models.ReservaTracking;
 import br.ufpr.dac.voos.dto.UpdateVooDTO;
+import br.ufpr.dac.voos.enums.StatusVoos;
 import br.ufpr.dac.voos.repository.VooRepository;
 import br.ufpr.dac.voos.repository.AeroportoRepository;
 
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +18,11 @@ import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class VooService {
@@ -27,6 +33,9 @@ public class VooService {
 
     @Autowired
     private AeroportoRepository aeroportoRepository;
+    
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     public List<Voo> findByOrigemAndDestino(String origemCodigo, String destinoCodigo) {
         return vooRepository.findByOrigemCodigoAndDestinoCodigo(origemCodigo, destinoCodigo);
@@ -89,19 +98,63 @@ public class VooService {
     }
 
     @Transactional
-    public void atualizarStatus(Long id, String status) {
-        Voo voo = vooRepository.findById(id)
+    public void atualizarStatus(Long id, String statusStr) {
+        logger.info("Atualizando status do voo {} para {}", id, statusStr);
+        
+        StatusVoos status;
+        try {
+            status = StatusVoos.fromDescricao(statusStr);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Status inválido: " + statusStr);
+        }
+        
+        Voo voo = vooRepository.findByIdWithReservas(id)
             .orElseThrow(() -> new EntityNotFoundException("Voo não encontrado: " + id));
+
+        logger.debug("Voo encontrado: ID={}, Código={}", voo.getId(), voo.getCodigoVoo());
+        logger.debug("ReservasTracking inicializado: {}", voo.getReservasTracking() != null);
+        logger.debug("Número de reservas: {}", 
+            voo.getReservasTracking() != null ? voo.getReservasTracking().size() : 0);
+        
+        if (voo.getReservasTracking() != null && !voo.getReservasTracking().isEmpty()) {
+            voo.getReservasTracking().forEach(rt -> 
+                logger.debug("Reserva encontrada - ID: {}, Status: {}, Quantidade: {}", 
+                    rt.getReservaId(), rt.getStatus(), rt.getQuantidade())
+            );
+        }
+
+        if (!isValidStatusTransition(voo.getStatusEnum(), status)) { 
+            throw new IllegalStateException(
+                "Transição de status inválida: " + voo.getStatus() + " -> " + status.getDescricao());
+        }
 
         validarStatus(status);
         voo.setStatus(status);
         vooRepository.save(voo);
-    }
-
-    private void validarStatus(String status) {
-        if (!status.equals("CONFIRMADO") && !status.equals("REALIZADO") && !status.equals("CANCELADO")) {
-            throw new IllegalArgumentException("Status inválido: " + status);
+        
+        if (status == StatusVoos.CANCELADO) {
+            List<Long> reservaIds = voo.getReservasTracking().stream()
+                .filter(rt -> !"CANCELADA".equals(rt.getStatus()))  
+                .map(ReservaTracking::getReservaId)
+                .collect(Collectors.toList());
+                    
+            logger.info("Encontradas {} reservas ativas para cancelamento no voo {}", 
+                reservaIds.size(), id);
+                
+            if (!reservaIds.isEmpty()) {
+                Map<String, Object> sagaPayload = new HashMap<>();
+                sagaPayload.put("tipo", "VOO_CANCELADO");
+                sagaPayload.put("vooId", id);
+                sagaPayload.put("reservaIds", reservaIds);
+                
+                logger.info("Iniciando saga para cancelamento das reservas do voo {}", id);
+                rabbitTemplate.convertAndSend("saga-exchange", "voo.status.request", sagaPayload);
+            } else {
+                logger.info("Nenhuma reserva ativa encontrada para cancelar no voo {}", id);
+            }
         }
+        
+        logger.info("Status do voo {} atualizado com sucesso para {}", id, status.getDescricao());
     }
 
    
@@ -130,6 +183,39 @@ public class VooService {
             return false;
         }
     }
+    
+    @Transactional
+    public boolean atualizarReservasTracking(Long vooId, List<ReservaTracking> trackingUpdates) {
+        try {
+            Voo voo = vooRepository.findById(vooId)
+                .orElseThrow(() -> new EntityNotFoundException("Voo não encontrado: " + vooId));
+
+            for (ReservaTracking update : trackingUpdates) {
+                Optional<ReservaTracking> existingTracking = voo.getReservasTracking().stream()
+                    .filter(t -> t.getReservaId().equals(update.getReservaId()))
+                    .findFirst();
+
+                if (existingTracking.isPresent()) {
+                    ReservaTracking tracking = existingTracking.get();
+                    tracking.setStatus(update.getStatus());
+                    tracking.setQuantidade(update.getQuantidade());
+                } else {
+                    voo.getReservasTracking().add(update);
+                }
+            }
+
+            voo.updatePassengerCount();
+            vooRepository.save(voo);
+            
+            logger.info("Successfully updated {} reservation trackings for voo {}", 
+                       trackingUpdates.size(), vooId);
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Error updating reservation trackings for voo {}: {}", vooId, e.getMessage());
+            return false;
+        }
+    }
 
     @Transactional
     public boolean updateReservaStatus(Long vooId, Long reservaId, String newStatus) {
@@ -152,6 +238,26 @@ public class VooService {
             logger.error("Error updating reservation status for voo {} reserva {}: {}", 
                         vooId, reservaId, e.getMessage());
             return false;
+        }
+    }
+    private boolean isValidStatusTransition(StatusVoos currentStatus, StatusVoos newStatus) {
+        if (currentStatus == null) return true;
+        
+        switch (currentStatus) {
+            case CONFIRMADO:
+                return newStatus == StatusVoos.REALIZADO || newStatus == StatusVoos.CANCELADO;
+            case REALIZADO:
+                return false;
+            case CANCELADO:
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    private void validarStatus(StatusVoos status) {
+        if (status == null) {
+            throw new IllegalArgumentException("Status não pode ser nulo");
         }
     }
 }

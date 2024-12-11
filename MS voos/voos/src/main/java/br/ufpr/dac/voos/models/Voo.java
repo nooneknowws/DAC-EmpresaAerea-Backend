@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import br.ufpr.dac.voos.enums.StatusVoos;
+
 @Entity
 @Table(name = "voos")
 public class Voo {
@@ -19,7 +21,7 @@ public class Voo {
 
 
 	public Voo(Long id, String codigoVoo, LocalDateTime dataHoraPartida, Aeroporto origem, Aeroporto destino,
-			BigDecimal valorPassagem, int quantidadeAssentos, int quantidadePassageiros, String status) {
+			BigDecimal valorPassagem, int quantidadeAssentos, int quantidadePassageiros, StatusVoos status) {
 		super();
 		this.id = id;
 		this.codigoVoo = codigoVoo;
@@ -62,7 +64,8 @@ public class Voo {
     private int quantidadePassageiros;
 
     @Column(name = "status")
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private StatusVoos status = StatusVoos.CONFIRMADO; 
     
     @ElementCollection
     @CollectionTable(
@@ -70,14 +73,6 @@ public class Voo {
         joinColumns = @JoinColumn(name = "voo_id")
     )
     private List<ReservaTracking> reservasTracking = new ArrayList<>();
-
-
-    @PrePersist
-    private void prePersist() {
-        if (this.status == null) {
-            this.status = "CONFIRMADO";
-        }
-    }
 
 
     
@@ -136,19 +131,25 @@ public class Voo {
     public void setQuantidadePassageiros(int quantidadePassageiros) {
         this.quantidadePassageiros = quantidadePassageiros;
     }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
+    
+    public void setStatus(StatusVoos status) {
         this.status = status;
     }
 
+    public String getStatus() {
+        return status != null ? status.getDescricao() : null;
+    }
 
+    public void setStatus(String statusStr) {
+        this.status = StatusVoos.fromDescricao(statusStr);
+    }
 
 	public String getCodigoVoo() {
 		return codigoVoo;
+	}
+	
+	public StatusVoos getStatusEnum() {
+	    return this.status;
 	}
 
 

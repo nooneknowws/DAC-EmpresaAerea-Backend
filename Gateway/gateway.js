@@ -254,7 +254,7 @@ app.post("/voos", (req, res, next) => {
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
-// status
+// ROTA PARA REALIZAR O VOO
 app.patch("/voos/:id/status", cors(), (req, res, next) => {
   console.log('Received PATCH request for flight status update:', {
     flightId: req.params.id,
@@ -268,14 +268,6 @@ app.patch("/voos/:id/status", cors(), (req, res, next) => {
       proxyReqOpts.method = 'PATCH';
       return proxyReqOpts;
     }
-  });
-});
-// Rota para editar um voo (PUT)
-app.put("/voos/:id", (req, res, next) => {
-  voosServiceProxy(req, res, next, {
-    proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
-
-    proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
 //FILTRO DE VOOS POR AEROPORTO ORIGEM/DESTINO
@@ -299,19 +291,27 @@ app.get("/voos/filter", (req, res, next) => {
     }
   });
 });
+// ROTA PARA CANCELAR O VOO
+app.patch("/voos/:id/cancelar", cors(), (req, res, next) => {
+  console.log('Received PATCH request for flight cancellation:', {
+    flightId: req.params.id
+  });
 
-// Rota para remover um voo (DELETE)
-app.delete("/voos/:id", (req, res, next) => {
   voosServiceProxy(req, res, next, {
-    proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
+    proxyReqPathResolver: (req) => `/voos/${req.params.id}/cancelar`,
+    proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+      proxyReqOpts.headers['Content-Type'] = 'application/json';
+      proxyReqOpts.method = 'PATCH';
+      return proxyReqOpts;
+    }
   });
 });
 
 // MS-RESERVAS
 // CONFIRMAR RESERVA
-app.put("/reservas/:id/confirmar", verifyJWT, (req, res, next) => {
-  reservasServiceProxy(req, res, {
-    proxyReqPathResolver: (req) => `/reservas/${req.params.id}/confirmar`,
+app.put("/reservas/:id/checkin", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, next, {  // Added next parameter
+    proxyReqPathResolver: (req) => `/reservas/${req.params.id}/checkin`,
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
       const responseString = proxyResData.toString('utf8');
       console.log(`Response from reservas confirmation service: ${responseString}`);
@@ -320,6 +320,25 @@ app.put("/reservas/:id/confirmar", verifyJWT, (req, res, next) => {
         return jsonResponse;
       } catch (error) {
         console.error('Error parsing reservas confirmation response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
+});
+// CONFIRMAR EMBARQUE
+app.put("/reservas/:id/embarque", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/reservas/${req.params.id}/embarque`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas embarque service: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas embarque response:', error);
         return {
           error: 'Invalid response from reservas service'
         };
@@ -340,6 +359,25 @@ app.put("/reservas/:id/cancelar", verifyJWT, (req, res, next) => {
         return jsonResponse;
       } catch (error) {
         console.error('Error parsing reservas cancellation response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
+});
+// GET RESERVAS POR VOO
+app.get("/reservas/voo/:vooId", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/reservas/voo/${req.params.vooId}`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas service for flight ${req.params.vooId}: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas service response:', error);
         return {
           error: 'Invalid response from reservas service'
         };

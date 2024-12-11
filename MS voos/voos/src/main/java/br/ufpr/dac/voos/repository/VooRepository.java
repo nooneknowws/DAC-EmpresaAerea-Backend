@@ -22,4 +22,11 @@ public interface VooRepository extends JpaRepository<Voo, Long> {
         @Param("origemCodigo") String origemCodigo, 
         @Param("destinoCodigo") String destinoCodigo
     );
+    
+    @Query("SELECT DISTINCT v FROM Voo v " +
+            "LEFT JOIN FETCH v.origem o " +
+            "LEFT JOIN FETCH v.destino d " +
+            "LEFT JOIN FETCH v.reservasTracking rt " +
+            "WHERE v.id = :id")
+     Optional<Voo> findByIdWithReservas(@Param("id") Long id);
 }

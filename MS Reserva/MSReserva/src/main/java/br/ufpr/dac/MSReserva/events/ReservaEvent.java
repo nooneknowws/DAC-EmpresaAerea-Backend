@@ -13,7 +13,9 @@ public class ReservaEvent implements Serializable {
 
     private EventType tipo;
     private Long id;
+    private String nomeCliente;
     private LocalDateTime dataHora;
+    private LocalDateTime dataHoraPartida;
     private Aeroporto aeroportoOrigem;
     private Aeroporto aeroportoDestino;
     private Double valor;
@@ -31,8 +33,10 @@ public class ReservaEvent implements Serializable {
 
     public static ReservaEvent fromReserva(Reserva reserva) {
         ReservaEvent event = new ReservaEvent();
+        event.setNomeCliente(reserva.getNomeCliente());
         event.setId(reserva.getId());
         event.setDataHora(reserva.getDataHora());
+        event.setDataHoraPartida(reserva.getDataHoraPartida());
         event.setAeroportoOrigem(reserva.getAeroportoOrigem());
         event.setAeroportoDestino(reserva.getAeroportoDestino());
         event.setValor(reserva.getValor());
@@ -155,5 +159,21 @@ public class ReservaEvent implements Serializable {
 
 	public static long getSerialversionuid() {
 		return serialVersionUID;
+	}
+
+	public LocalDateTime getDataHoraPartida() {
+		return dataHoraPartida;
+	}
+
+	public void setDataHoraPartida(LocalDateTime dataHoraPartida) {
+		this.dataHoraPartida = dataHoraPartida;
+	}
+
+	public String getNomeCliente() {
+		return nomeCliente;
+	}
+
+	public void setNomeCliente(String nomeCliente) {
+		this.nomeCliente = nomeCliente;
 	}
 }

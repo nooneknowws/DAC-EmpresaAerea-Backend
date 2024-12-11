@@ -15,8 +15,12 @@ public class Reserva {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    private String nomeCliente;
+    
     @Column(name = "data_hora")
     private LocalDateTime dataHora;
+    
+    private LocalDateTime dataHoraPartida;
     
     @Embedded
     @AttributeOverrides({
@@ -73,7 +77,9 @@ public class Reserva {
 
         return new ReservaDTO(
             id,
+            nomeCliente,
             dataHora,
+            dataHoraPartida,
             aeroportoOrigem,
             aeroportoDestino,
             valor,
@@ -152,5 +158,21 @@ public class Reserva {
 
 	public void setAeroportoDestino(Aeroporto aeroportoDestino) {
 		this.aeroportoDestino = aeroportoDestino;
+	}
+
+	public LocalDateTime getDataHoraPartida() {
+		return dataHoraPartida;
+	}
+
+	public void setDataHoraPartida(LocalDateTime dataHoraPartida) {
+		this.dataHoraPartida = dataHoraPartida;
+	}
+
+	public String getNomeCliente() {
+		return nomeCliente;
+	}
+
+	public void setNomeCliente(String nomeCliente) {
+		this.nomeCliente = nomeCliente;
 	}
 }

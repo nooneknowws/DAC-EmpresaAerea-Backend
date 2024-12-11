@@ -16,12 +16,14 @@ public class ReservaQueryService {
 
     private static final Function<Reserva, ReservaDTO> toDTO = reserva -> new ReservaDTO(
         reserva.getId(),
+        reserva.getNomeCliente(),
         reserva.getDataHora(),
+        reserva.getDataHoraPartida(),
         reserva.getAeroportoOrigem(), 
         reserva.getAeroportoDestino(),
         reserva.getValor(),
         reserva.getMilhas(),
-        reserva.getStatus().name(),
+        reserva.getStatus().getDescricao(),
         reserva.getVooId(),
         reserva.getClienteId(),
         reserva.getCodigoReserva(),

@@ -29,8 +29,9 @@ public class ReservaCommandService {
     @Transactional
     public Reserva criarReserva(CriarReservaDTO dto) {
         Reserva reserva = new Reserva();
-        
+        reserva.setNomeCliente(dto.nomeCliente());
         reserva.setDataHora(LocalDateTime.now());
+        reserva.setDataHoraPartida(dto.dataHoraPartida());
         reserva.setAeroportoOrigem(dto.aeroportoOrigem());
         reserva.setAeroportoDestino(dto.aeroportoDestino());
         reserva.setValor(dto.valor());
@@ -86,9 +87,35 @@ public class ReservaCommandService {
         reserva.setStatus(StatusReserva.CONFIRMADO);
         reserva.adicionarHistoricoAlteracaoEstado(estadoOrigem, StatusReserva.CONFIRMADO);
         
-        return reservaCommandRepository.save(reserva).toDTO();
+        Reserva reservaAtualizada = reservaCommandRepository.save(reserva);
+        
+        ReservaEvent event = ReservaEvent.fromReserva(reservaAtualizada);
+        event.setTipo(ReservaEvent.EventType.UPDATED);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, event);
+        
+        return reservaAtualizada.toDTO();
     }
-
+    @Transactional
+    public ReservaDTO confirmarEmbarque(Long id) {
+        Reserva reserva = reservaCommandRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada"));
+            
+        if (reserva.getStatus() != StatusReserva.CONFIRMADO) {
+            throw new IllegalStateException("Apenas reservas confirmadas podem ser embarcadas");
+        }
+        
+        StatusReserva estadoOrigem = reserva.getStatus();
+        reserva.setStatus(StatusReserva.EMBARCADO);
+        reserva.adicionarHistoricoAlteracaoEstado(estadoOrigem, StatusReserva.EMBARCADO);
+        
+        Reserva reservaAtualizada = reservaCommandRepository.save(reserva);
+        
+        ReservaEvent event = ReservaEvent.fromReserva(reservaAtualizada);
+        event.setTipo(ReservaEvent.EventType.UPDATED);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, event);
+        
+        return reservaAtualizada.toDTO();
+    }
     @Transactional
     public ReservaDTO iniciarCancelamentoReserva(Long id) {
         Reserva reserva = reservaCommandRepository.findById(id)
@@ -110,8 +137,7 @@ public class ReservaCommandService {
         reserva.adicionarHistoricoAlteracaoEstado(estadoOrigem, StatusReserva.CANCELADO);
         
         Reserva reservaAtualizada = reservaCommandRepository.save(reserva);
-        
-        // Create and publish event for sync
+ 
         ReservaEvent event = ReservaEvent.fromReserva(reservaAtualizada);
         event.setTipo(ReservaEvent.EventType.UPDATED);
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, event);

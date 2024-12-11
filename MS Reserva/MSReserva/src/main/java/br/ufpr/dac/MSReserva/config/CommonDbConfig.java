@@ -24,7 +24,7 @@ public class CommonDbConfig {
     @Bean
     EntityManagerFactoryBuilder entityManagerFactoryBuilder(JpaVendorAdapter jpaVendorAdapter) {
         Map<String, Object> jpaProperties = new HashMap<>();
-        jpaProperties.put("hibernate.hbm2ddl.auto", "create");
+        jpaProperties.put("hibernate.hbm2ddl.auto", "update");
         jpaProperties.put("hibernate.physical_naming_strategy", 
             "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy");
         jpaProperties.put("hibernate.implicit_naming_strategy", 

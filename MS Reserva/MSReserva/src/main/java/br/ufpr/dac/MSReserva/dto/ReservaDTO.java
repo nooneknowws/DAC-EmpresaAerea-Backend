@@ -7,7 +7,9 @@ import br.ufpr.dac.MSReserva.model.Aeroporto;
 
 public record ReservaDTO(
     Long id,
+    String nomeCliente,
     LocalDateTime dataHora,
+    LocalDateTime dataHoraPartida,
     Aeroporto aeroportoOrigem,
     Aeroporto aeroportoDestino,
     Double valor,
