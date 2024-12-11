@@ -34,6 +34,7 @@ services:
     ports:
       - "5001:5001"
 
+
   # gateway:
   #   build:
   #     context: ./Gateway
@@ -48,6 +49,6 @@ services:
   #   ports:
   #     - "5010:5010"
 
-networks:
-  default:
-    driver: bridge
+# networks:
+#   default:
+#     driver: bridge
