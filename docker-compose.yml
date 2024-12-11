@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5000:5000"
+    image: auth
+    container_name: ms-auth
 
   cliente:
     build:
@@ -12,6 +14,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5003:5003"
+    image: cliente
+    container_name: ms-cliente
 
   funcionarios:
     build:
@@ -19,6 +23,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5007:5007"
+    image: funcionarios
+    container_name: ms-func
 
   reserva:
     build:
@@ -26,6 +32,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5005:5005"
+    image: reserva
+    container_name: ms-reserva
 
   voos:
     build:
@@ -33,14 +41,18 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5001:5001"
+    image: voos
+    container_name: ms-voos
 
 
-  # gateway:
-  #   build:
-  #     context: ./Gateway
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
+  gateway:
+    build:
+      context: ./Gateway
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    image: api
+    container_name: api-gateway
 
   # saga:
   #   build:
