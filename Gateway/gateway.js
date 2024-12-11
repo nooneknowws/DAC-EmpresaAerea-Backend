@@ -173,7 +173,7 @@ function verifyJWT(req, res, next) {
     next();
   });
 }
-app.get("/session/check", (req, res, next) => {
+app.get("/session/check", verifyJWT, (req, res, next,)=> {
   const token = req.headers["x-access-token"];
 
   if (!token) {
@@ -275,26 +275,26 @@ app.post("/api/aeroportos", verifyJWT, (req, res, next) => {
   });
 });
 // Rota para listar todos os voos (GET)
-app.get("/voos", (req, res, next) => {
+app.get("/voos", verifyJWT, (req, res, next) => {
   // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada
   voosServiceProxy(req, res, next);
 });
 
 // Rota para listar um voo pelo ID (GET)
-app.get("/voos/:id", (req, res, next) => {
+app.get("/voos/:id", verifyJWT, (req, res, next) => {
   voosServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
   });
 });
 
 // Rota para inserir um novo voo (POST)
-app.post("/voos", (req, res, next) => {
+app.post("/voos", verifyJWT, (req, res, next) => {
   voosServiceProxy(req, res, next, {
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
 // ROTA PARA REALIZAR O VOO
-app.patch("/voos/:id/status", cors(), (req, res, next) => {
+app.patch("/voos/:id/status", cors(), verifyJWT, (req, res, next) => {
   console.log('Received PATCH request for flight status update:', {
     flightId: req.params.id,
     status: req.query.status
@@ -310,7 +310,7 @@ app.patch("/voos/:id/status", cors(), (req, res, next) => {
   });
 });
 //FILTRO DE VOOS POR AEROPORTO ORIGEM/DESTINO
-app.get("/voos/filter", (req, res, next) => {
+app.get("/voos/filter",  verifyJWT, (req, res, next) => {
   voosServiceProxy(req, res, {
     proxyReqPathResolver: (req) => {
       return `/voos/filter?origem=${req.query.origem}&destino=${req.query.destino}`;
@@ -331,7 +331,7 @@ app.get("/voos/filter", (req, res, next) => {
   });
 });
 // ROTA PARA CANCELAR O VOO
-app.patch("/voos/:id/cancelar", cors(), (req, res, next) => {
+app.patch("/voos/:id/cancelar", cors(), verifyJWT, (req, res, next) => {
   console.log('Received PATCH request for flight cancellation:', {
     flightId: req.params.id
   });
@@ -595,7 +595,7 @@ app.post("/funcionarios/cadastro", mailServer, (req, res, next) => {
 app.get("/funcionarios", verifyJWT, (req, res, next) => {
   FuncionarioServiceProxy(req, res, next);
 });
-app.get("/funcionarios/:id", (req, res, next) => {
+app.get("/funcionarios/:id", verifyJWT, (req, res, next) => {
   console.log(`Receiving request for funcionario ID: ${req.params.id}`);
 
   FuncionarioServiceProxy(req, res, next, {
@@ -613,14 +613,14 @@ app.get("/funcionarios/:id", (req, res, next) => {
     },
   });
 });
-app.put("/funcionarios/edit/:id", (req, res, next) => {
+app.put("/funcionarios/edit/:id", verifyJWT, (req, res, next) => {
   FuncionarioServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/funcionarios/edit/${req.params.id}`,
 
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
-app.put("/funcionarios/status/:id", (req, res, next) => {
+app.put("/funcionarios/status/:id", verifyJWT, (req, res, next) => {
   FuncionarioServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/funcionarios/status/${req.params.id}`,
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
