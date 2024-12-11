@@ -24,14 +24,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.funcionarios.funcionarios.models.Funcionario;
 import com.funcionarios.funcionarios.models.dto.FuncionarioDTO;
 import com.funcionarios.funcionarios.repository.FuncionarioRepository;
 import com.funcionarios.funcionarios.services.FuncionarioService;
-
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 @RestController
 @CrossOrigin
@@ -104,12 +102,16 @@ public class FuncionarioRest {
             return ResponseEntity.status(HttpStatus.CREATED).body(savedFuncionarioDTO);
         } catch (TimeoutException e) {
             logger.error("Verification timeout for email: {}", funcionarioDTO.getEmail());
-            return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
-                .body(new ErrorResponse("Timeout na verificação", e.getMessage()));
+            throw new ResponseStatusException(
+                HttpStatus.REQUEST_TIMEOUT, 
+                "Timeout na verificação: " + e.getMessage()
+            );
         } catch (Exception e) {
             logger.error("Error in registration: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("Erro durante o cadastro", e.getMessage()));
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR, 
+                "Erro durante o cadastro: " + e.getMessage()
+            );
         }
     }
 
@@ -123,42 +125,41 @@ public class FuncionarioRest {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Object> getOneFuncionario(@PathVariable(value = "id") Long id){
-        Optional<Funcionario> funcionario = funcionarioRepository.findById(id);
-        if (funcionario.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Funcionário com ID " + id + " não encontrado.");
-        }
-        FuncionarioDTO funcionarioDTO = modelMapper.map(funcionario.get(), FuncionarioDTO.class);
-        return ResponseEntity.ok(funcionarioDTO);
+    public ResponseEntity<FuncionarioDTO> getOneFuncionario(@PathVariable(value = "id") Long id) {
+        Funcionario funcionario = funcionarioRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, 
+                "Funcionário com ID " + id + " não encontrado."
+            ));
+        return ResponseEntity.ok(modelMapper.map(funcionario, FuncionarioDTO.class));
     }
 
     @PutMapping("/edit/{id}")
-    public ResponseEntity<Object> updateFuncionario(@PathVariable(value = "id") Long id,
-            @RequestBody @Validated FuncionarioDTO FuncionarioDTO) {
+    public ResponseEntity<FuncionarioDTO> updateFuncionario(@PathVariable(value = "id") Long id,
+            @RequestBody @Validated FuncionarioDTO funcionarioDTO) {
         try {
-            Optional<Funcionario> funcionarioOptional = funcionarioRepository.findById(id);
-            if (funcionarioOptional.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Funcionário com ID " + id + " não encontrado.");
-            }
+            Funcionario funcionario = funcionarioRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Funcionário com ID " + id + " não encontrado."
+                ));
 
-            Funcionario funcionario = funcionarioOptional.get();
-
-            Optional<Funcionario> usuarioComMesmoEmail = funcionarioRepository.findByEmail(FuncionarioDTO.getEmail());
+            Optional<Funcionario> usuarioComMesmoEmail = funcionarioRepository.findByEmail(funcionarioDTO.getEmail());
             if (usuarioComMesmoEmail.isPresent() && !usuarioComMesmoEmail.get().getId().equals(id)) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body("O email informado já está em uso por outro funcionário.");
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "O email informado já está em uso por outro funcionário."
+                );
             }
 
-            funcionario.setCpf(FuncionarioDTO.getCpf());
-            funcionario.setNome(FuncionarioDTO.getNome());
-            funcionario.setEmail(FuncionarioDTO.getEmail());
-            funcionario.setPerfil(FuncionarioDTO.getPerfil());
-            funcionario.setTelefone(FuncionarioDTO.getTelefone());
+            funcionario.setCpf(funcionarioDTO.getCpf());
+            funcionario.setNome(funcionarioDTO.getNome());
+            funcionario.setEmail(funcionarioDTO.getEmail());
+            funcionario.setPerfil(funcionarioDTO.getPerfil());
+            funcionario.setTelefone(funcionarioDTO.getTelefone());
 
-            if (FuncionarioDTO.getSenha() != null && !FuncionarioDTO.getSenha().isEmpty()) {
-                funcionario.setSenha(hashSenha(FuncionarioDTO.getSenha(), funcionario.getSalt()));
+            if (funcionarioDTO.getSenha() != null && !funcionarioDTO.getSenha().isEmpty()) {
+                funcionario.setSenha(hashSenha(funcionarioDTO.getSenha(), funcionario.getSalt()));
             }
 
             funcionarioRepository.save(funcionario);
@@ -167,27 +168,30 @@ public class FuncionarioRest {
             updatedFuncionarioDTO.setSenha(null);
 
             return ResponseEntity.ok(updatedFuncionarioDTO);
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("Erro ao atualizar funcionário com ID {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erro interno ao atualizar o funcionário. Detalhes: " + e.getMessage());
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Erro interno ao atualizar o funcionário: " + e.getMessage()
+            );
         }
     }
+
     @PutMapping("/status/{id}")
-    public ResponseEntity<Object> updateFuncionarioStatus(@PathVariable(value = "id") Long id) {
+    public ResponseEntity<FuncionarioDTO> updateFuncionarioStatus(@PathVariable(value = "id") Long id) {
         try {
-            Optional<Funcionario> funcionarioOptional = funcionarioRepository.findById(id);
-            if (funcionarioOptional.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Funcionário com ID " + id + " não encontrado.");
-            }
-            Funcionario funcionario = funcionarioOptional.get();
+            Funcionario funcionario = funcionarioRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Funcionário com ID " + id + " não encontrado."
+                ));
             
             String currentStatus = funcionario.getfuncStatus();
             String newStatus = "ATIVO".equals(currentStatus) ? "INATIVO" : "ATIVO";
             
             funcionario.setfuncStatus(newStatus);
-
             funcionarioRepository.save(funcionario);
 
             FuncionarioDTO updatedFuncionarioDTO = modelMapper.map(funcionario, FuncionarioDTO.class);
@@ -197,10 +201,14 @@ public class FuncionarioRest {
 
             return ResponseEntity.ok(updatedFuncionarioDTO);
             
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("Erro ao atualizar status do funcionário com ID {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erro interno ao atualizar o status do funcionário. Detalhes: " + e.getMessage());
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Erro interno ao atualizar o status do funcionário: " + e.getMessage()
+            );
         }
     }
 
@@ -221,13 +229,4 @@ public class FuncionarioRest {
             throw new RuntimeException("Erro ao criptografar a senha", e);
         }
     }
-    @Getter
-    @AllArgsConstructor
-    class ErrorResponse {
-        public ErrorResponse(String string, String message2) {
-		}
-		private String message;
-        private String details;
-    }
-
 }

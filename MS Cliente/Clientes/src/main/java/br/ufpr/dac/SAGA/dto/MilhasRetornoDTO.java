@@ -1,13 +1,13 @@
-package br.ufpr.dac.MSClientes.models.dto;
+package br.ufpr.dac.SAGA.dto;
 
-public class MilhasDTO {
+public class MilhasRetornoDTO {
     private Long clienteId;
     private Double quantidade;
     private Double valorEmReais;
     private String descricao;
     private Long reservaId;
     private String entradaSaida;
-    
+
     public Double getValorEmReais() {return valorEmReais;}
     public void setValorEmReais(Double valorEmReais) {this.valorEmReais = valorEmReais;}
     public Long getClienteId() { return clienteId; }

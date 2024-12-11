@@ -1,11 +1,13 @@
 package br.ufpr.dac.MSReserva.model;
 
 public enum StatusReserva {
-	PENDENTE("Pendente"), 
-	FINALIZADO("Finalizada"), 
+	PENDENTE("Pendente"),
+	CONFIRMADO("Confirmado"),
 	CANCELADO("Cancelada"), 
 	EMBARCADO("Embarcado"),
-	CONFIRMADO("Confirmado");
+	REALIZADO("Realizado"),
+	NÃOREALIZADO("Não Realizado");
+	
 
 	private final String descricao;
 

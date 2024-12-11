@@ -11,7 +11,7 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 @Entity
-@Table(name = "usuarios")  // Good practice to specify table name
+@Table(name = "usuarios")  
 public class Usuario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,7 +41,7 @@ public class Usuario {
     private String telefone;
 
     @Column(name = "saldo_milhas")
-    private int saldoMilhas;
+    private Double saldoMilhas;
     
     @OneToMany(mappedBy = "cliente",fetch = FetchType.LAZY)
     @JsonManagedReference
@@ -50,7 +50,7 @@ public class Usuario {
     // Constructors
     public Usuario() {}
 
-    public Usuario(String cpf, String nome, String email, String senha, Endereco endereco, String perfil, String telefone) {
+    public Usuario(String cpf, String nome, String email, String senha, Endereco endereco, String perfil, String telefone, Double saldoMilhas) {
         this.cpf = cpf;
         this.nome = nome;
         this.email = email;
@@ -59,7 +59,7 @@ public class Usuario {
         this.endereco = endereco;
         this.perfil = perfil;
         this.telefone = telefone;
-        this.saldoMilhas = 0;
+        this.saldoMilhas = saldoMilhas;
     }
 
     // Password handling methods
@@ -167,11 +167,11 @@ public class Usuario {
         this.telefone = telefone;
     }
 
-    public int getSaldoMilhas() {
+    public Double getSaldoMilhas() {
         return saldoMilhas;
     }
 
-    public void setSaldoMilhas(int saldoMilhas) {
+    public void setSaldoMilhas(Double saldoMilhas) {
         this.saldoMilhas = saldoMilhas;
     }
 

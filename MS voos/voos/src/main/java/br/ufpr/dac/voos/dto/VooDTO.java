@@ -2,6 +2,7 @@ package br.ufpr.dac.voos.dto;
 
 import java.math.BigDecimal;
 
+import br.ufpr.dac.voos.enums.StatusVoos;
 import br.ufpr.dac.voos.models.Voo;
 
 public class VooDTO {

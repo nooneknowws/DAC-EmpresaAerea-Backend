@@ -15,134 +15,130 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class JwtService {
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
     
-    // Token expiration time in hours
-    private static final long EXPIRATION_HOURS = 24;
+    private static final long ACCESS_TOKEN_EXPIRATION = 900_000; 
+    private static final long REFRESH_TOKEN_EXPIRATION = 7_776_000_000L; 
     
-    // The secret key used for signing tokens
     private final SecretKey secretKey;
 
     public JwtService(@Value("${JWT_SECRET}") String jwtSecret) {
-        // In JJWT 0.12.6, we use Keys.hmacShaKeyFor to create a secure key
-        // This ensures the key is properly sized for the HMAC-SHA algorithm
-        this.secretKey = Keys.hmacShaKeyFor(
-            jwtSecret.getBytes(StandardCharsets.UTF_8)
-        );
-        logger.info("JWT Service initialized with secret key");
+        this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        logger.info("JWT Service initialized");
     }
 
-    /**
-     * Generates a new JWT token for a given email.
-     * The token includes the email as the subject and standard timing claims.
-     *
-     * @param email The email to be included in the token
-     * @return The generated JWT token string
-     */
-    public String generateToken(String email) {
-        // Get the current timestamp and calculate expiration
+    public String generateAccessToken(String email) {
+        return generateToken(email, ACCESS_TOKEN_EXPIRATION, "access");
+    }
+
+    public String generateRefreshToken(String email) {
+        return generateToken(email, REFRESH_TOKEN_EXPIRATION, "refresh");
+    }
+
+    private String generateToken(String email, long expirationTime, String tokenType) {
         Instant now = Instant.now();
-        Instant expiration = now.plus(EXPIRATION_HOURS, ChronoUnit.HOURS);
+        Instant expiration = now.plusMillis(expirationTime);
 
-        // Build the token using the new JJWT fluent API
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", tokenType);
+
         return Jwts.builder()
-                .subject(email)                // Set the subject (email)
-                .issuedAt(Date.from(now))      // Set the issue timestamp
-                .expiration(Date.from(expiration))  // Set the expiration
-                .signWith(secretKey)           // Sign with our secret key
-                .compact();                    // Build the final token
+                .subject(email)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiration))
+                .claims(claims)
+                .signWith(secretKey)
+                .compact();
     }
 
-    /**
-     * Validates a JWT token for authenticity and expiration.
-     * This method uses JJWT 0.12.6's new parser builder pattern.
-     *
-     * @param token The token to validate
-     * @return true if the token is valid, false otherwise
-     */
-    public boolean validateToken(String token) {
+    public boolean validateAccessToken(String token) {
+        return validateToken(token, "access");
+    }
+
+    public boolean validateRefreshToken(String token) {
+        return validateToken(token, "refresh");
+    }
+
+    private boolean validateToken(String token, String expectedType) {
         if (token == null || token.trim().isEmpty()) {
-            logger.error("Received null or empty token");
+            logger.warn("Received null or empty token");
             return false;
         }
 
         try {
-            // Parse and validate the token using JJWT 0.12.6's new parser
-            Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token);
-            
-            // If we reach this point, the token is valid
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            String tokenType = claims.get("type", String.class);
+            if (!expectedType.equals(tokenType)) {
+                logger.warn("Invalid token type. Expected: {}, Got: {}", expectedType, tokenType);
+                return false;
+            }
+
             return true;
 
         } catch (SignatureException e) {
-            // The token's signature doesn't match our key
             logger.error("Invalid JWT signature: {}", e.getMessage());
-            return false;
-            
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            // The token has expired
             logger.error("JWT token has expired: {}", e.getMessage());
-            return false;
-            
         } catch (io.jsonwebtoken.security.SecurityException e) {
-            // There was a security problem with the token
             logger.error("JWT security error: {}", e.getMessage());
-            return false;
-            
         } catch (io.jsonwebtoken.MalformedJwtException e) {
-            // The token's structure is invalid
             logger.error("Malformed JWT token: {}", e.getMessage());
-            return false;
-            
         } catch (JwtException e) {
-            // Catch any other JWT-specific exceptions
             logger.error("JWT validation error: {}", e.getMessage());
-            return false;
-            
         } catch (Exception e) {
-            // Catch any unexpected errors
             logger.error("Unexpected error during JWT validation: {}", e.getMessage());
-            return false;
         }
+
+        return false;
     }
 
-    /**
-     * Extracts the email (subject) from a JWT token.
-     * Uses JJWT 0.12.6's new claims parsing approach.
-     *
-     * @param token The JWT token
-     * @return The email from the token, or null if the token is invalid
-     */
     public String getEmailFromToken(String token) {
         try {
-            // Parse the token and extract claims using the new API
-            var jwtData = Jwts.parser()
+            return Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
-                    .parseSignedClaims(token);
-            
-            // Get the claims body and extract the subject (email)
-            Claims claims = jwtData.getPayload();
-            return claims.getSubject();
-            
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getSubject();
         } catch (Exception e) {
             logger.error("Error extracting email from token: {}", e.getMessage());
             return null;
         }
     }
 
-    /**
-     * Returns the token expiration time in milliseconds.
-     * This can be useful for client-side token management.
-     *
-     * @return The expiration time in milliseconds
-     */
-    public long getExpirationTimeInMillis() {
-        return EXPIRATION_HOURS * 60 * 60 * 1000;
+    public String getTokenType(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            
+            return claims.get("type", String.class);
+        } catch (Exception e) {
+            logger.error("Error extracting token type: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    public long getAccessTokenExpirationMs() {
+        return ACCESS_TOKEN_EXPIRATION;
+    }
+    
+    public long getExpirationSeconds() {
+        return ACCESS_TOKEN_EXPIRATION / 1000;
+    }
+    public long getRefreshTokenExpirationMs() {
+        return REFRESH_TOKEN_EXPIRATION;
     }
 }

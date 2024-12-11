@@ -1,16 +1,23 @@
 package br.ufpr.dac.MSClientes.rabbitmq;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.amqp.core.Message;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import br.ufpr.dac.MSClientes.models.dto.MilhasDTO;
+import br.ufpr.dac.MSClientes.rest.MilhasRest;
 import com.rabbitmq.client.Channel;
 
 import br.ufpr.dac.MSClientes.models.dto.LoginDTO;
 import br.ufpr.dac.MSClientes.services.ClienteService;
+import br.ufpr.dac.SAGA.dto.MilhasRetornoDTO;
+
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +32,11 @@ public class RabbitListenerClientes {
 
     @Autowired
     private ClienteService clienteService;
+    @Autowired
+    private ObjectMapper objectMapper;
+    
+    @Autowired
+    private MilhasRest milhasRest;
 
     @RabbitListener(queues = "client.verification", ackMode = "MANUAL")
     public void verifyClient(LoginDTO loginDTO, Message message, Channel channel) {
@@ -80,4 +92,58 @@ public class RabbitListenerClientes {
             logger.error("Error during message acknowledgment", e);
         }
     }
-}
+    @RabbitListener(queues = "milhas.processamento", ackMode = "MANUAL")
+    public void processarMilhasRetorno(MilhasRetornoDTO milhasRetornoDTO, Message message, Channel channel) {
+        try {
+            logger.info("Received milhas return request for clientId: {}", milhasRetornoDTO.getClienteId());
+
+            MilhasDTO milhasDTO = convertToMilhasDTO(milhasRetornoDTO);
+            ResponseEntity<?> response = milhasRest.processarMilhas(milhasDTO);
+
+            Map<String, Object> sagaResponse = createSagaResponse(milhasDTO, response);
+            
+            rabbitTemplate.convertAndSend(
+                "saga-exchange",
+                "milhas.processamento.response",
+                sagaResponse
+            );
+
+            logger.info("Processed milhas return for clientId: {} with status: {}",
+                milhasDTO.getClienteId(),
+                sagaResponse.get("status"));
+
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+
+        } catch (Exception e) {
+            logger.error("Error processing milhas return: {}", e.getMessage(), e);
+            handleMessageRejection(message, channel);
+        }
+    }
+
+    private MilhasDTO convertToMilhasDTO(MilhasRetornoDTO source) {
+        MilhasDTO target = new MilhasDTO();
+        target.setClienteId(source.getClienteId());
+        target.setQuantidade(source.getQuantidade());
+        target.setValorEmReais(source.getValorEmReais());
+        target.setDescricao(source.getDescricao());
+        target.setReservaId(source.getReservaId());
+        target.setEntradaSaida(source.getEntradaSaida());
+        return target;
+    }
+
+    private Map<String, Object> createSagaResponse(MilhasDTO milhasDTO, ResponseEntity<?> response) {
+        Map<String, Object> sagaResponse = new HashMap<>();
+        sagaResponse.put("reservaId", milhasDTO.getReservaId());
+        sagaResponse.put("status", response.getStatusCode().is2xxSuccessful() ? "success" : "failure");
+        sagaResponse.put("clienteId", milhasDTO.getClienteId());
+        return sagaResponse;
+    }
+
+    private void handleMessageRejection(Message message, Channel channel) {
+        try {
+            channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+        } catch (IOException ioException) {
+            logger.error("Error during message rejection", ioException);
+        }
+    }
+   }

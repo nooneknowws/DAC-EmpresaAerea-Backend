@@ -12,6 +12,7 @@ import br.ufpr.dac.MSAuth.service.JwtService;
 import br.ufpr.dac.MSAuth.model.AuthSession;
 import br.ufpr.dac.MSAuth.repository.AuthSessionRepository;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -20,8 +21,8 @@ import java.util.concurrent.TimeUnit;
 @CrossOrigin
 @RestController
 public class AuthREST {
-	private static final Logger logger = LoggerFactory.getLogger(AuthREST.class);
-	private static final int RABBIT_TIMEOUT_SECONDS = 10;
+    private static final Logger logger = LoggerFactory.getLogger(AuthREST.class);
+    private static final int RABBIT_TIMEOUT_SECONDS = 10;
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
@@ -43,14 +44,8 @@ public class AuthREST {
 
         Optional<AuthSession> existingSession = authSessionRepository.findByEmail(loginDTO.getEmail());
         if (existingSession.isPresent()) {
-            AuthSession session = existingSession.get();
-            if (jwtService.validateToken(session.getToken())) {
-                logger.info("Duplicate login detected for email: {}. Deleting old session and continuing with new login.", loginDTO.getEmail());
-                authSessionRepository.delete(session);
-            } else {
-                logger.info("Cleaning up expired session for email: {}", loginDTO.getEmail());
-                authSessionRepository.delete(session);
-            }
+            authSessionRepository.delete(existingSession.get());
+            logger.info("Cleaned up existing session for email: {}", loginDTO.getEmail());
         }
 
         Map<String, String> authResponse = authenticateViaRabbitMQ(loginDTO);
@@ -67,8 +62,161 @@ public class AuthREST {
             );
         }
     }
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader("x-access-token") String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Token is required"));
+        }
 
+        try {
+            if (jwtService.validateAccessToken(token)) {
+                String userEmail = jwtService.getEmailFromToken(token);
+                Optional<AuthSession> session = authSessionRepository.findByEmail(userEmail);
+                
+                if (session.isPresent()) {
+                    authSessionRepository.delete(session.get());
+                    logger.info("Successfully deleted session for user: {}", userEmail);
+                    return ResponseEntity.ok(Map.of(
+                        "message", "Logout successful",
+                        "sessionCleanedUp", true
+                    ));
+                }
+            }
+            return ResponseEntity.status(401).body(Map.of("message", "Invalid session"));
+        } catch (Exception e) {
+            logger.error("Error during logout", e);
+            return ResponseEntity.status(500).body(Map.of("message", "Error processing logout"));
+        }
+    }
 
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+        
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            return createErrorResponse("Refresh token is required", 400);
+        }
+
+        try {
+            if (!jwtService.validateRefreshToken(refreshToken)) {
+                return createErrorResponse("Invalid refresh token", 401);
+            }
+
+            String email = jwtService.getEmailFromToken(refreshToken);
+            Optional<AuthSession> sessionOpt = authSessionRepository.findByEmail(email);
+            
+            if (sessionOpt.isPresent()) {
+                AuthSession session = sessionOpt.get();
+                if (refreshToken.equals(session.getRefreshToken())) {
+                    String newAccessToken = jwtService.generateAccessToken(email);
+                    String newRefreshToken = jwtService.generateRefreshToken(email);
+                    Date currentTime = new Date();
+                    
+                    session.setToken(newAccessToken);
+                    session.setRefreshToken(newRefreshToken);
+                    session.setLastActivity(currentTime);
+                    authSessionRepository.save(session);
+                    
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("status", "success");
+                    response.put("token", newAccessToken);
+                    response.put("refreshToken", newRefreshToken);
+                    response.put("email", email);
+                    response.put("id", session.getId());
+                    response.put("perfil", session.getPerfil());
+                    response.put("statusFunc", session.getStatusFunc());
+                    response.put("expiresIn", jwtService.getAccessTokenExpirationMs() / 1000);
+                    
+                    logger.info("Tokens refreshed successfully for user: {}", email);
+                    return ResponseEntity.ok(response);
+                }
+            }
+            
+            return createErrorResponse("Invalid session", 401);
+        } catch (Exception e) {
+            logger.error("Error during token refresh: {}", e.getMessage());
+            return createErrorResponse("Error processing refresh token", 500);
+        }
+    }
+
+    @GetMapping("/session/check")
+    public ResponseEntity<?> checkSession(@RequestHeader("x-access-token") String token) {
+        if (token == null) {
+            return ResponseEntity.status(401).body(Map.of("status", "error", "message", "No token provided"));
+        }
+
+        try {
+            if (jwtService.validateAccessToken(token)) {
+                String email = jwtService.getEmailFromToken(token);
+                Optional<AuthSession> session = authSessionRepository.findByEmail(email);
+                
+                if (session.isPresent() && session.get().getToken().equals(token)) {
+                    session.get().setLastActivity(new Date());
+                    authSessionRepository.save(session.get());
+                    
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("status", "success");
+                    response.put("token", token);
+                    response.put("user", session.get());
+                    return ResponseEntity.ok(response);
+                }
+            }
+            return ResponseEntity.status(401).body(Map.of("status", "error", "message", "Invalid session"));
+        } catch (Exception e) {
+            logger.error("Error checking session: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("status", "error", "message", "Error checking session"));
+        }
+    }
+
+    private ResponseEntity<?> handleSuccessfulAuth(Map<String, String> authResponse) {
+        try {
+            String id = authResponse.get("id");
+            String email = authResponse.get("email");
+            String perfil = authResponse.get("perfil");
+            String statusFunc = authResponse.get("statusFunc");
+            
+            if ("Funcionario".equals(perfil) && "INATIVO".equals(statusFunc)) {
+                logger.warn("Login attempt by inactive employee: {}", email);
+                return createErrorResponse("Funcionario está INATIVO", 404);
+            }
+            
+            String accessToken = jwtService.generateAccessToken(email);
+            String refreshToken = jwtService.generateRefreshToken(email);
+            Date currentTime = new Date();
+
+            
+            AuthSession newSession = new AuthSession(
+                id,          
+                id,          
+                email,       
+                accessToken, 
+                perfil,      
+                statusFunc,  
+                refreshToken,
+                currentTime,
+                currentTime.getTime() 
+            );
+
+            authSessionRepository.save(newSession);
+            logger.info("Created new session for user: {}", email);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", id);
+            response.put("status", "success");
+            response.put("token", accessToken);
+            response.put("refreshToken", refreshToken);
+            response.put("email", email);
+            response.put("perfil", perfil);
+            response.put("statusFunc", statusFunc);
+            response.put("expiresIn", jwtService.getAccessTokenExpirationMs() / 1000);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error creating user session: {}", e.getMessage());
+            return createErrorResponse("Error creating user session", 500);
+        }
+    }
     private boolean isValidLoginRequest(LoginDTO loginDTO) {
         return loginDTO != null 
             && loginDTO.getEmail() != null 
@@ -106,114 +254,10 @@ public class AuthREST {
         }
     }
 
-    private ResponseEntity<?> handleSuccessfulAuth(Map<String, String> authResponse) {
-        try {
-            String id = authResponse.get("id");
-            String email = authResponse.get("email");
-            String perfil = authResponse.get("perfil");
-            String statusFunc = authResponse.get("statusFunc");
-            
-            String token = jwtService.generateToken(email);
-
-            AuthSession newSession = new AuthSession(id, email, token, perfil, statusFunc);
-            authSessionRepository.save(newSession);
-            logger.info("Created new session for user: {}", email);
-
-            Map<String, String> response = new HashMap<>();
-            response.put("id", id);
-            response.put("status", "success");
-            response.put("token", token);
-            response.put("email", email);
-            response.put("perfil", perfil);
-            response.put("statusFunc", statusFunc);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            logger.error("Error creating user session: {}", e.getMessage());
-            return createErrorResponse("Error creating user session", 500);
-        }
-    }
-
     private ResponseEntity<?> createErrorResponse(String message, int statusCode) {
         Map<String, String> errorResponse = new HashMap<>();
         errorResponse.put("status", "error");
         errorResponse.put("message", message);
         return ResponseEntity.status(statusCode).body(errorResponse);
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestBody Map<String, String> request) {
-        String token = request.get("token");
-        
-        if (token == null || token.trim().isEmpty()) {
-            logger.warn("Logout attempt with missing token");
-            return ResponseEntity.badRequest()
-                .body(Map.of("message", "Token is required"));
-        }
-
-        try {
-            if (jwtService.validateToken(token)) {
-                String userEmail = jwtService.getEmailFromToken(token);
-                logger.info("Processing logout for user: {}", userEmail);
-                
-                boolean sessionRemoved = false;
-                try {
-                    var session = authSessionRepository.findByToken(token);
-                    if (session.isPresent()) {
-                        authSessionRepository.delete(session.get());
-                        sessionRemoved = true;
-                        logger.info("Successfully deleted session for user: {}", userEmail);
-                    } else {
-                        var emailSession = authSessionRepository.findByEmail(userEmail);
-                        if (emailSession.isPresent()) {
-                            authSessionRepository.delete(emailSession.get());
-                            sessionRemoved = true;
-                            logger.info("Successfully deleted session using email for user: {}", userEmail);
-                        }
-                    }
-                } catch (Exception dbError) {
-                    logger.error("Database error during session cleanup: {}", dbError.getMessage());
-                }
-                
-                Map<String, Object> response = new HashMap<>();
-                response.put("message", "Logout successful");
-                response.put("sessionCleanedUp", sessionRemoved);
-                
-                return ResponseEntity.ok(response);
-            } else {
-                logger.warn("Logout attempted with invalid token");
-                return ResponseEntity.status(401)
-                    .body(Map.of("message", "Invalid token"));
-            }
-        } catch (Exception e) {
-            logger.error("Error during logout", e);
-            return ResponseEntity.status(500)
-                .body(Map.of("message", "Error processing logout"));
-        }
-    }
-    @GetMapping("/session/check")
-    public ResponseEntity<?> checkSession(@RequestHeader("x-access-token") String token) {
-        if (token == null) {
-            return ResponseEntity.status(401).body(Map.of("status", "error", "message", "No token provided"));
-        }
-
-        try {
-            if (jwtService.validateToken(token)) {
-                String email = jwtService.getEmailFromToken(token);
-                Optional<AuthSession> session = authSessionRepository.findByEmail(email);
-                
-                if (session.isPresent() && session.get().getToken().equals(token)) {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("status", "success");
-                    response.put("token", token);
-                    response.put("user", session.get());
-                    return ResponseEntity.ok(response);
-                }
-            }
-            return ResponseEntity.status(401).body(Map.of("status", "error", "message", "Invalid session"));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("status", "error", "message", "Error checking session"));
-        }
     }
 }
