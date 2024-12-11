@@ -21,13 +21,13 @@ public class Milhas {
     private LocalDateTime dataHoraTransacao;
 
     @Column(nullable = false)
-    private Integer quantidade;
+    private Double quantidade;
 
     @Column(name = "entrada_saida", nullable = false)
     private String entradaSaida;
     
     @Column(name = "valor_em_reais", nullable = false)
-    private Long valorEmReais;
+    private Double valorEmReais;
 
     private String descricao;
     
@@ -36,7 +36,7 @@ public class Milhas {
 
     public Milhas() {}
 
-    public Milhas(Usuario cliente, LocalDateTime dataHoraTransacao, Integer quantidade, String entradaSaida, Long valorEmReais,String descricao, Long reservaID) {
+    public Milhas(Usuario cliente, LocalDateTime dataHoraTransacao, Double quantidade, String entradaSaida, Double valorEmReais,String descricao, Long reservaID) {
         this.cliente = cliente;
         this.dataHoraTransacao = dataHoraTransacao;
         this.quantidade = quantidade;
@@ -71,11 +71,11 @@ public class Milhas {
         this.dataHoraTransacao = dataHoraTransacao;
     }
 
-    public Integer getQuantidade() {
+    public Double getQuantidade() {
         return quantidade;
     }
 
-    public void setQuantidade(Integer quantidade) {
+    public void setQuantidade(Double quantidade) {
         this.quantidade = quantidade;
     }
 
@@ -103,11 +103,11 @@ public class Milhas {
 		this.reservaId = reservaId;
 	}
 
-	public Long getValorEmReais() {
+	public Double getValorEmReais() {
 		return valorEmReais;
 	}
 
-	public void setValorEmReais(Long valorEmReais) {
+	public void setValorEmReais(Double valorEmReais) {
 		this.valorEmReais = valorEmReais;
 	}
 }

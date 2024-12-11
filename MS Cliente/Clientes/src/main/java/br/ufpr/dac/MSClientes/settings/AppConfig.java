@@ -13,14 +13,14 @@ import jakarta.persistence.EntityManagerFactory;
 public class AppConfig {
 
     @Bean
-    public ModelMapper modelMapper() {
+    ModelMapper modelMapper() {
         return new ModelMapper();
     }
 
 @EnableTransactionManagement
     public class TransactionConfig {
-        @Bean
-        public PlatformTransactionManager transactionManager(EntityManagerFactory emf) {
+    @Bean
+    PlatformTransactionManager transactionManager(EntityManagerFactory emf) {
             return new JpaTransactionManager(emf);
         }
     }
