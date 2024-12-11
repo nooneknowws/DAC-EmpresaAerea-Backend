@@ -18,12 +18,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import br.ufpr.dac.MSClientes.models.Usuario;
 import br.ufpr.dac.MSClientes.models.dto.UsuarioDTO;
 import br.ufpr.dac.MSClientes.repository.ClienteRepo;
 import br.ufpr.dac.MSClientes.services.ClienteService;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 @RestController
 @CrossOrigin
@@ -91,12 +90,16 @@ public class ClienteRest {
 
         } catch (TimeoutException e) {
             logger.error("Verification timeout for email: {}", usuarioDTO.getEmail());
-            return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
-                .body(new ErrorResponse("Timeout na verificação", e.getMessage()));
+            throw new ResponseStatusException(
+                HttpStatus.REQUEST_TIMEOUT, 
+                "Timeout na verificação: " + e.getMessage()
+            );
         } catch (Exception e) {
             logger.error("Error in registration: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("Erro durante o cadastro", e.getMessage()));
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR, 
+                "Erro durante o cadastro: " + e.getMessage()
+            );
         }
     }
     
@@ -107,20 +110,11 @@ public class ClienteRest {
             .map(e -> modelMapper.map(e, UsuarioDTO.class))
             .collect(Collectors.toList());
     }
+
     @GetMapping("/clientes/busca/{id}")
     public ResponseEntity<UsuarioDTO> buscarPorId(@PathVariable("id") Long id) {
         return clienteRepository.findById(id)
             .map(usuario -> ResponseEntity.ok(modelMapper.map(usuario, UsuarioDTO.class)))
             .orElse(ResponseEntity.notFound().build());
     }
-    @Getter
-    @AllArgsConstructor
-    class ErrorResponse {
-        public ErrorResponse(String string, String message2) {
-		}
-		private String message;
-        private String details;
-    }
-
-
 }
