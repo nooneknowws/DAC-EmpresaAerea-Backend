@@ -366,6 +366,25 @@ app.put("/reservas/:id/cancelar", verifyJWT, (req, res, next) => {
     }
   });
 });
+// RESERVAS POR CLIENTE E 48HORAS
+app.get("/reservas/cliente/:clienteId/filter-data", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/reservas/cliente/${req.params.clienteId}/filter-data`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas service for upcoming reservations of client ${req.params.clienteId}: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas service response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
+});
 // GET RESERVAS POR VOO
 app.get("/reservas/voo/:vooId", verifyJWT, (req, res, next) => {
   reservasServiceProxy(req, res, {

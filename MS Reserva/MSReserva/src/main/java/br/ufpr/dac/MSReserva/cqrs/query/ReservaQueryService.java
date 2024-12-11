@@ -1,5 +1,6 @@
 package br.ufpr.dac.MSReserva.cqrs.query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -58,5 +59,12 @@ public class ReservaQueryService {
 
     public Optional<ReservaDTO> buscarReservaPorCodigo(String codReserva) {
         return reservaQueryRepository.findByCodigoReserva(codReserva).map(toDTO);
+    }
+    public List<ReservaDTO> listarReservasProximas48HorasPorCliente(Long clienteId) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime end = now.plusHours(48);
+        return convertToDTOList(
+            reservaQueryRepository.findReservasProximas48HorasPorCliente(now, end, clienteId)
+        );
     }
 }

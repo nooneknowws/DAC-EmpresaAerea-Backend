@@ -1,5 +1,6 @@
 package br.ufpr.dac.MSReserva.cqrs.query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,4 +28,13 @@ public interface ReservaQueryRepository extends JpaRepository<Reserva, Long> {
 	    
 	    @Query("SELECT DISTINCT r FROM Reserva r LEFT JOIN FETCH r.historicoAlteracaoEstado WHERE r.id = :id")
 	    Optional<Reserva> findById(@Param("id") Long id);
+	    
+	    @Query("SELECT DISTINCT r FROM Reserva r LEFT JOIN FETCH r.historicoAlteracaoEstado " +
+	    	       "WHERE r.dataHoraPartida BETWEEN :startDate AND :endDate " +
+	    	       "AND r.clienteId = :clienteId")
+	    	List<Reserva> findReservasProximas48HorasPorCliente(
+	    	    @Param("startDate") LocalDateTime startDate, 
+	    	    @Param("endDate") LocalDateTime endDate,
+	    	    @Param("clienteId") Long clienteId
+	    	);
 }

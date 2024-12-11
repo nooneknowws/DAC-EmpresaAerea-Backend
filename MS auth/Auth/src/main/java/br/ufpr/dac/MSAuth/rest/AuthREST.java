@@ -113,6 +113,12 @@ public class AuthREST {
             String perfil = authResponse.get("perfil");
             String statusFunc = authResponse.get("statusFunc");
             
+            // Add check for inactive employee
+            if ("Funcionario".equals(perfil) && "INATIVO".equals(statusFunc)) {
+                logger.warn("Login attempt by inactive employee: {}", email);
+                return createErrorResponse("Funcionario está INATIVO", 404);
+            }
+            
             String token = jwtService.generateToken(email);
 
             AuthSession newSession = new AuthSession(id, email, token, perfil, statusFunc);

@@ -152,7 +152,22 @@ public class VooService {
             } else {
                 logger.info("Nenhuma reserva ativa encontrada para cancelar no voo {}", id);
             }
-        }
+        }  else if (status == StatusVoos.REALIZADO) {
+            List<Long> reservaIds = voo.getReservasTracking().stream()
+                    .filter(rt -> !"CANCELADA".equals(rt.getStatus()))  
+                    .map(ReservaTracking::getReservaId)
+                    .collect(Collectors.toList());
+                        
+                if (!reservaIds.isEmpty()) {
+                    Map<String, Object> sagaPayload = new HashMap<>();
+                    sagaPayload.put("tipo", "VOO_REALIZADO");
+                    sagaPayload.put("vooId", id);
+                    sagaPayload.put("reservaIds", reservaIds);
+                    
+                    logger.info("Iniciando saga para atualização das reservas do voo realizado {}", id);
+                    rabbitTemplate.convertAndSend("saga-exchange", "voo.status.request", sagaPayload);
+                }
+            }
         
         logger.info("Status do voo {} atualizado com sucesso para {}", id, status.getDescricao());
     }

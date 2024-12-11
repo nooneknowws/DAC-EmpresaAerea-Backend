@@ -32,6 +32,15 @@ public class ReservaController {
         Reserva reserva = commandService.criarReserva(reservaDTO);
         return ResponseEntity.ok(reserva);
     }
+    @GetMapping("/cliente/{clienteId}/filter-data")
+    public ResponseEntity<List<ReservaDTO>> listarReservasProximas48HorasPorCliente(
+        @PathVariable("clienteId") Long clienteId
+    ) {
+        System.out.println("Controller: Received request for client " + clienteId + "'s reservations in next 48 hours");
+        List<ReservaDTO> reservas = queryService.listarReservasProximas48HorasPorCliente(clienteId);
+        System.out.println("Controller: Returning " + reservas.size() + " reservations");
+        return ResponseEntity.ok(reservas);
+    }
 
     @GetMapping("/cliente/{clienteId}")
     public ResponseEntity<List<ReservaDTO>> listarReservasPorCliente(
