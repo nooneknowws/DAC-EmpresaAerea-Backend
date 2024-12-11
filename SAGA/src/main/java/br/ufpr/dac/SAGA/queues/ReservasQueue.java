@@ -49,6 +49,34 @@ public class ReservasQueue {
         args.put("x-message-ttl", QUEUE_TTL);
         return new Queue("reserva.cancellation.complete", true, false, false, args);
     }
+    @Bean
+    Queue reservaCriacaoRequestQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-message-ttl", QUEUE_TTL);
+        return new Queue("reserva.criacao.request", true, false, false, args);
+    }
+
+    @Bean
+    Queue reservaCriacaoResponseQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-message-ttl", QUEUE_TTL);
+        return new Queue("reserva.criacao.response", true, false, false, args);
+    }
+
+    @Bean
+    Queue vooAtualizacaoQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-message-ttl", QUEUE_TTL);
+        return new Queue("voo.atualizacao", true, false, false, args);
+    }
+
+    @Bean
+    Queue vooAtualizacaoResponseQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-message-ttl", QUEUE_TTL);
+        return new Queue("voo.atualizacao.response", true, false, false, args);
+    }
+
 
     //BINDINGS
     @Bean
@@ -99,5 +127,44 @@ public class ReservasQueue {
             .bind(reservaCancellationCompleteQueue)
             .to(exchange)
             .with("reserva.cancellation.complete");
+    }
+    @Bean
+    Binding reservaCriacaoRequestBinding(
+            @Qualifier("reservaCriacaoRequestQueue") Queue reservaCriacaoRequestQueue,
+            @Qualifier("exchange") DirectExchange exchange) {
+        return BindingBuilder
+            .bind(reservaCriacaoRequestQueue)
+            .to(exchange)
+            .with("reserva.criacao.request");
+    }
+
+    @Bean
+    Binding reservaCriacaoResponseBinding(
+            @Qualifier("reservaCriacaoResponseQueue") Queue reservaCriacaoResponseQueue,
+            @Qualifier("exchange") DirectExchange exchange) {
+        return BindingBuilder
+            .bind(reservaCriacaoResponseQueue)
+            .to(exchange)
+            .with("reserva.criacao.response");
+    }
+
+    @Bean
+    Binding vooAtualizacaoBinding(
+            @Qualifier("vooAtualizacaoQueue") Queue vooAtualizacaoQueue,
+            @Qualifier("exchange") DirectExchange exchange) {
+        return BindingBuilder
+            .bind(vooAtualizacaoQueue)
+            .to(exchange)
+            .with("voo.atualizacao");
+    }
+
+    @Bean
+    Binding vooAtualizacaoResponseBinding(
+            @Qualifier("vooAtualizacaoResponseQueue") Queue vooAtualizacaoResponseQueue,
+            @Qualifier("exchange") DirectExchange exchange) {
+        return BindingBuilder
+            .bind(vooAtualizacaoResponseQueue)
+            .to(exchange)
+            .with("voo.atualizacao.response");
     }
 }

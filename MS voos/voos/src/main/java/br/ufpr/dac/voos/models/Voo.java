@@ -3,6 +3,8 @@ package br.ufpr.dac.voos.models;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "voos")
@@ -61,6 +63,13 @@ public class Voo {
 
     @Column(name = "status")
     private String status;
+    
+    @ElementCollection
+    @CollectionTable(
+        name = "voo_reservas_tracking",
+        joinColumns = @JoinColumn(name = "voo_id")
+    )
+    private List<ReservaTracking> reservasTracking = new ArrayList<>();
 
 
     @PrePersist
@@ -143,10 +152,53 @@ public class Voo {
 	}
 
 
-
 	public void setCodigoVoo(String codigoVoo) {
 		this.codigoVoo = codigoVoo;
 	}
+	
+	public List<ReservaTracking> getReservasTracking() {
+        return reservasTracking;
+    }
 
+    public void setReservasTracking(List<ReservaTracking> reservasTracking) {
+        this.reservasTracking = reservasTracking;
+        updatePassengerCount();
+    }
     
+    public void addReservaTracking(Long reservaId, Integer quantidade, String status) {
+        if (!hasAvailableSeats(quantidade)) {
+            throw new IllegalStateException("Não há assentos suficientes disponíveis");
+        }
+        
+        ReservaTracking tracking = new ReservaTracking(reservaId, quantidade, status);
+        reservasTracking.add(tracking);
+        updatePassengerCount();
+    }
+
+    public void updateReservaStatus(Long reservaId, String newStatus) {
+        reservasTracking.stream()
+            .filter(r -> r.getReservaId().equals(reservaId))
+            .findFirst()
+            .ifPresent(r -> {
+                r.setStatus(newStatus);
+                updatePassengerCount();
+            });
+    }
+
+    public boolean hasAvailableSeats(int requestedSeats) {
+        int occupiedSeats = reservasTracking.stream()
+            .filter(r -> !"CANCELADA".equals(r.getStatus()))
+            .mapToInt(ReservaTracking::getQuantidade)
+            .sum();
+            
+        return (quantidadeAssentos - occupiedSeats) >= requestedSeats;
+    }
+    
+    public void updatePassengerCount() {
+        this.quantidadePassageiros = reservasTracking.stream()
+            .filter(r -> !"CANCELADA".equals(r.getStatus()))
+            .mapToInt(ReservaTracking::getQuantidade)
+            .sum();
+    }
 }
+    

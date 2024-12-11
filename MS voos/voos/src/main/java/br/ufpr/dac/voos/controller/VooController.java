@@ -66,15 +66,6 @@ public class VooController {
             return ResponseEntity.ok(new VooDTO(vooAtualizado));
         }
         
-        @DeleteMapping("/{id}")
-        public ResponseEntity<Void> deletarVoo(@PathVariable("id") Long id) {
-            try {
-                vooService.deletarVoo(id);
-                return ResponseEntity.noContent().build();
-            } catch (RuntimeException e) {
-                return ResponseEntity.notFound().build();
-            }
-        }
 
         @PatchMapping("/{id}/status")
         public ResponseEntity<Void> atualizarStatus(

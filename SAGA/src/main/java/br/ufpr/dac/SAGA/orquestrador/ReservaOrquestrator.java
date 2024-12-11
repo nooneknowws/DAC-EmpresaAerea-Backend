@@ -29,7 +29,6 @@ public class ReservaOrquestrator {
         try {
             logger.info("Received cancellation request: {}", payload);
 
-            // More robust way to handle the ID conversion
             Long reservaId;
             Object rawReservaId = payload.get("reservaId");
             if (rawReservaId instanceof Integer) {
@@ -45,7 +44,7 @@ public class ReservaOrquestrator {
             MilhasRetornoDTO milhasDTO = new MilhasRetornoDTO();
             milhasDTO.setReservaId(reservaId);
             milhasDTO.setQuantidade((Double) payload.get("quantidade"));
-            milhasDTO.setClienteId(((Number) payload.get("clienteId")).longValue()); // Safe conversion
+            milhasDTO.setClienteId(((Number) payload.get("clienteId")).longValue());
             milhasDTO.setEntradaSaida((String)payload.get("entradaSaida"));
             milhasDTO.setValorEmReais((Double)payload.get("valorEmReais"));
             milhasDTO.setDescricao((String)payload.get("descricao"));
@@ -68,7 +67,6 @@ public class ReservaOrquestrator {
     @RabbitListener(queues = "milhas.processamento.response", ackMode = "MANUAL")
     public void handleMilhasProcessamentoResponse(Map<String, Object> response, Message message, Channel channel) {
         try {
-            // Safely convert reservaId to Long, handling potential Integer input
             Long reservaId = convertToLong(response.get("reservaId"));
             logger.info("Received milhas processing response for reserva: {}", reservaId);
 
@@ -101,6 +99,67 @@ public class ReservaOrquestrator {
             handleMessageRejection(message, channel);
         }
     }
+    @RabbitListener(queues = "reserva.criacao.request", ackMode = "MANUAL")
+    public void handleReservaCriacao(Map<String, Object> payload, Message message, Channel channel) {
+        try {
+            logger.info("Received creation request: {}", payload);
+
+            Long reservaId = convertToLong(payload.get("reservaId"));
+            processamentoStatusMap.put(reservaId, new ProcessamentoStatus());
+
+            Map<String, Object> vooPayload = new HashMap<>();
+            vooPayload.put("reservaId", reservaId);
+            vooPayload.put("vooId", convertToLong(payload.get("vooId")));
+            vooPayload.put("quantidade", payload.get("quantidade"));
+            vooPayload.put("status", "PENDENTE");
+
+            rabbitTemplate.convertAndSend("saga-exchange", "voo.atualizacao", vooPayload);
+
+            logger.info("Sent voo update request for reserva: {}", reservaId);
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        } catch (Exception e) {
+            logger.error("Error handling reserva creation", e);
+            handleMessageRejection(message, channel);
+        }
+    }
+
+    @RabbitListener(queues = "voo.atualizacao.response", ackMode = "MANUAL")
+    public void handleVooAtualizacaoResponse(Map<String, Object> response, Message message, Channel channel) {
+        try {
+            Long reservaId = convertToLong(response.get("reservaId"));
+            logger.info("Received voo update response for reserva: {}", reservaId);
+
+            ProcessamentoStatus status = processamentoStatusMap.get(reservaId);
+            if (status == null) {
+                logger.warn("No status found for reserva: {}", reservaId);
+                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+                return;
+            }
+
+            Map<String, Object> responseMessage = new HashMap<>();
+            responseMessage.put("reservaId", reservaId);
+
+            if ("success".equals(response.get("status"))) {
+                responseMessage.put("status", "success");
+                responseMessage.put("message", "Reserva successfully created");
+                logger.info("Voo successfully updated for reserva: {}", reservaId);
+            } else {
+                responseMessage.put("status", "failure");
+                responseMessage.put("message", "Failed to update voo");
+                logger.error("Failed to update voo for reserva: {}", reservaId);
+            }
+
+            rabbitTemplate.convertAndSend("saga-exchange", "reserva.criacao.response", responseMessage);
+            processamentoStatusMap.remove(reservaId);
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+
+        } catch (Exception e) {
+            logger.error("Error handling voo update response", e);
+            handleMessageRejection(message, channel);
+        }
+    }
+    
+    
     private Long convertToLong(Object value) {
         if (value == null) {
             throw new IllegalArgumentException("reservaId cannot be null");
@@ -123,5 +182,7 @@ public class ReservaOrquestrator {
 
     private static class ProcessamentoStatus {
         boolean milhasProcessadas = false;
+        boolean vooAtualizado = false;
     }
+    
 }

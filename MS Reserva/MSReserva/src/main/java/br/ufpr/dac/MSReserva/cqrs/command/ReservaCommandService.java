@@ -1,6 +1,8 @@
 package br.ufpr.dac.MSReserva.cqrs.command;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,6 +29,7 @@ public class ReservaCommandService {
     @Transactional
     public Reserva criarReserva(CriarReservaDTO dto) {
         Reserva reserva = new Reserva();
+        
         reserva.setDataHora(LocalDateTime.now());
         reserva.setAeroportoOrigem(dto.aeroportoOrigem());
         reserva.setAeroportoDestino(dto.aeroportoDestino());
@@ -45,8 +48,16 @@ public class ReservaCommandService {
         event.setTipo(ReservaEvent.EventType.CREATED); 
         
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, event);
+        
+        Map<String, Object> sagaPayload = new HashMap<>();
+        sagaPayload.put("reservaId", savedReserva.getId());
+        sagaPayload.put("vooId", savedReserva.getVooId());
+        sagaPayload.put("quantidade", savedReserva.getQuantidade());
+        sagaPayload.put("status", "PENDENTE");
 
-            return savedReserva;
+        rabbitTemplate.convertAndSend("saga-exchange", "reserva.criacao.request", sagaPayload);
+
+        return savedReserva;
 
     }
 
