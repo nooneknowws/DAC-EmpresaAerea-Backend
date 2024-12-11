@@ -308,6 +308,64 @@ app.delete("/voos/:id", (req, res, next) => {
 });
 
 // MS-RESERVAS
+// CONFIRMAR RESERVA
+app.put("/reservas/:id/confirmar", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/reservas/${req.params.id}/confirmar`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas confirmation service: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas confirmation response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
+});
+
+// CANCELAR RESERVA
+app.put("/reservas/:id/cancelar", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/reservas/${req.params.id}/cancelar`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas cancellation service: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas cancellation response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
+});
+// GET RESERVAS POR CODIGO
+app.get("/reservas/codigo/:codigoReserva", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/reservas/codigo/${req.params.codigoReserva}`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas service for code ${req.params.codigoReserva}: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas service response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
+});
 // GET RESERVAS POR CLIENTE
 app.get("/reservas/cliente/:clienteId", verifyJWT, (req, res, next) => {
   reservasServiceProxy(req, res, {
@@ -315,6 +373,25 @@ app.get("/reservas/cliente/:clienteId", verifyJWT, (req, res, next) => {
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
       const responseString = proxyResData.toString('utf8');
       console.log(`Response from reservas service for client ${req.params.clienteId}: ${responseString}`);
+      try {
+        const jsonResponse = JSON.parse(responseString);
+        return jsonResponse;
+      } catch (error) {
+        console.error('Error parsing reservas service response:', error);
+        return {
+          error: 'Invalid response from reservas service'
+        };
+      }
+    }
+  });
+});
+// GET RESERVAS POR ID
+app.get("/reservas/:id", verifyJWT, (req, res, next) => {
+  reservasServiceProxy(req, res, {
+    proxyReqPathResolver: (req) => `/reservas/${req.params.id}`,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const responseString = proxyResData.toString('utf8');
+      console.log(`Response from reservas service for ID ${req.params.id}: ${responseString}`);
       try {
         const jsonResponse = JSON.parse(responseString);
         return jsonResponse;

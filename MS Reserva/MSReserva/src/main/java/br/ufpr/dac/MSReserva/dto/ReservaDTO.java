@@ -3,18 +3,20 @@ package br.ufpr.dac.MSReserva.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import br.ufpr.dac.MSReserva.model.Aeroporto;
+
 public record ReservaDTO(
     Long id,
     LocalDateTime dataHora,
-    String aeroportoOrigemCod,
-    String aeroportoDestinoCod,
+    Aeroporto aeroportoOrigem,
+    Aeroporto aeroportoDestino,
     Double valor,
-    Integer milhas,
+    Double milhas,
     String status,
     Long vooId,
     Long clienteId,
     String codigoReserva,
     String codigoVoo,
-    Long quantidade,
+    Integer quantidade,
     List<HistoricoAlteracaoEstadoDTO> historicoAlteracaoEstado
 ) {}

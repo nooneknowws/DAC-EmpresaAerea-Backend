@@ -1,6 +1,7 @@
 package br.ufpr.dac.MSReserva.cqrs.command;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -8,58 +9,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import br.ufpr.dac.MSReserva.config.rabbitmq.RabbitMQConfig;
-import br.ufpr.dac.MSReserva.cqrs.command.*;
 import br.ufpr.dac.MSReserva.dto.CriarReservaDTO;
+import br.ufpr.dac.MSReserva.dto.ReservaDTO;
 import br.ufpr.dac.MSReserva.events.ReservaEvent;
 import br.ufpr.dac.MSReserva.model.Reserva;
 import br.ufpr.dac.MSReserva.model.StatusReserva;
-import jakarta.transaction.Transactional;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReservaCommandService {
-
     @Autowired
     private ReservaCommandRepository reservaCommandRepository;
-    
     @Autowired
     private RabbitTemplate rabbitTemplate;
     
-    private void publishEvent(Reserva reserva, ReservaEvent.EventType tipo) {
-        ReservaEvent event = new ReservaEvent();
-        event.setTipo(tipo);
-        event.setId(reserva.getId());
-        event.setDataHora(reserva.getDataHora());
-        event.setAeroportoOrigemCod(reserva.getAeroportoOrigemCod());
-        event.setAeroportoDestinoCod(reserva.getAeroportoDestinoCod());
-        event.setValor(reserva.getValor());
-        event.setMilhas(reserva.getMilhas());
-        event.setStatus(reserva.getStatus().name());
-        event.setVooId(reserva.getVooId());
-        event.setClienteId(reserva.getClienteId());
-        event.setCodigoReserva(reserva.getCodigoReserva());
-        event.setCodigoVoo(reserva.getCodigoVoo());
-        event.setQuantidade(reserva.getQuantidade());
-
-        rabbitTemplate.convertAndSend(
-            RabbitMQConfig.EXCHANGE_NAME, 
-            "reserva.sync.event", 
-            event
-        );
-
-       
-    }
-
-
     @Transactional
     public Reserva criarReserva(CriarReservaDTO dto) {
-    	  System.out.println("=== Incoming DTO Values ===");
-    	    System.out.println("codigoVoo: " + dto.codigoVoo());
-    	    System.out.println("quantidade: " + dto.quantidade());
-
         Reserva reserva = new Reserva();
         reserva.setDataHora(LocalDateTime.now());
-        reserva.setAeroportoOrigemCod(dto.aeroportoOrigemCod());
-        reserva.setAeroportoDestinoCod(dto.aeroportoDestinoCod());
+        reserva.setAeroportoOrigem(dto.aeroportoOrigem());
+        reserva.setAeroportoDestino(dto.aeroportoDestino());
         reserva.setValor(dto.valor());
         reserva.setMilhas(dto.milhas());
         reserva.setStatus(StatusReserva.PENDENTE);
@@ -69,25 +39,83 @@ public class ReservaCommandService {
         reserva.setCodigoVoo(dto.codigoVoo());      
         reserva.setQuantidade(dto.quantidade());     
         
-
-        reserva = reservaCommandRepository.save(reserva);
+        Reserva savedReserva = reservaCommandRepository.save(reserva);
         
-        publishEvent(reserva, ReservaEvent.EventType.CREATED);
-        return reserva;
+        ReservaEvent event = ReservaEvent.fromReserva(savedReserva);
+        event.setTipo(ReservaEvent.EventType.CREATED); 
+        
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, event);
+
+            return savedReserva;
+
     }
 
     @Transactional
     public Reserva atualizarStatusReserva(Long reservaId, StatusReserva novoStatus) {
         Reserva reserva = reservaCommandRepository.findById(reservaId)
-                .orElseThrow(() -> new RuntimeException("Reserva não encontrada"));
-        reserva.adicionarHistoricoAlteracaoEstado(reserva.getStatus(), novoStatus);
+                .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada"));
+        
+        StatusReserva estadoAnterior = reserva.getStatus();
         reserva.setStatus(novoStatus);
-        reservaCommandRepository.save(reserva);
-        return reserva;
+        reserva.adicionarHistoricoAlteracaoEstado(estadoAnterior, novoStatus);
+        
+        return reservaCommandRepository.save(reserva);
+    }
+
+    @Transactional
+    public ReservaDTO confirmarReserva(Long id) {
+        Reserva reserva = reservaCommandRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada"));
+            
+        if (reserva.getStatus() == StatusReserva.CANCELADO) {
+            throw new IllegalStateException("Não é possível confirmar uma reserva cancelada");
+        }
+        
+        StatusReserva estadoOrigem = reserva.getStatus();
+        reserva.setStatus(StatusReserva.CONFIRMADO);
+        reserva.adicionarHistoricoAlteracaoEstado(estadoOrigem, StatusReserva.CONFIRMADO);
+        
+        return reservaCommandRepository.save(reserva).toDTO();
+    }
+
+    @Transactional
+    public ReservaDTO iniciarCancelamentoReserva(Long id) {
+        Reserva reserva = reservaCommandRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada"));
+            
+        if (reserva.getStatus() == StatusReserva.CANCELADO) {
+            throw new IllegalStateException("Reserva já está cancelada");
+        }
+        
+        return reserva.toDTO();
+    }
+    @Transactional
+    public ReservaDTO finalizarCancelamentoReserva(Long id) {
+        Reserva reserva = reservaCommandRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada"));
+            
+        StatusReserva estadoOrigem = reserva.getStatus();
+        reserva.setStatus(StatusReserva.CANCELADO);
+        reserva.adicionarHistoricoAlteracaoEstado(estadoOrigem, StatusReserva.CANCELADO);
+        
+        Reserva reservaAtualizada = reservaCommandRepository.save(reserva);
+        
+        // Create and publish event for sync
+        ReservaEvent event = ReservaEvent.fromReserva(reservaAtualizada);
+        event.setTipo(ReservaEvent.EventType.UPDATED);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, event);
+        
+        return reservaAtualizada.toDTO();
     }
 
     private String gerarCodigoReserva() {
         UUID uuid = UUID.randomUUID();
-        return uuid.toString().substring(0, 3).toUpperCase() + "-" + uuid.toString().substring(3, 6);
+        return uuid.toString().substring(0, 3).toUpperCase() + "-" + 
+               uuid.toString().substring(3, 6).toUpperCase();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Reserva> findById(Long id) {
+        return reservaCommandRepository.findById(id);
     }
 }

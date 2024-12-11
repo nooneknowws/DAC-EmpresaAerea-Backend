@@ -2,59 +2,60 @@ package br.ufpr.dac.MSReserva.events;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import lombok.Data;
 
+import br.ufpr.dac.MSReserva.model.Aeroporto;
 import br.ufpr.dac.MSReserva.model.Reserva;
+import lombok.Data;
 
 @Data
 public class ReservaEvent implements Serializable {
-	private EventType tipo;
+    private static final long serialVersionUID = 1L;
+
+    private EventType tipo;
     private Long id;
     private LocalDateTime dataHora;
-    private String aeroportoOrigemCod;
-    private String aeroportoDestinoCod;
+    private Aeroporto aeroportoOrigem;
+    private Aeroporto aeroportoDestino;
     private Double valor;
-    private Integer milhas;
+    private Double milhas;
     private String status;
     private Long vooId;
     private Long clienteId;
-    private String codigoVoo;    
-    private Long quantidade;     
+    private String codigoVoo;
+    private Integer quantidade;
     private String codigoReserva;
-    @Override
-    public String toString() {
-        return "ReservaEvent{" +
-            "tipo=" + tipo +
-            ", id=" + id +
-            ", codigoVoo='" + codigoVoo + '\'' +
-            ", quantidade=" + quantidade +
-            ", status='" + status + '\'' +
-            '}';
-    }
-    
+
     public enum EventType {
         CREATED, UPDATED, DELETED
     }
+
     public static ReservaEvent fromReserva(Reserva reserva) {
-        
         ReservaEvent event = new ReservaEvent();
-    	
         event.setId(reserva.getId());
         event.setDataHora(reserva.getDataHora());
-        event.setAeroportoOrigemCod(reserva.getAeroportoOrigemCod());
-        event.setAeroportoDestinoCod(reserva.getAeroportoDestinoCod());
+        event.setAeroportoOrigem(reserva.getAeroportoOrigem());
+        event.setAeroportoDestino(reserva.getAeroportoDestino());
         event.setValor(reserva.getValor());
         event.setMilhas(reserva.getMilhas());
         event.setStatus(reserva.getStatus().name());
         event.setVooId(reserva.getVooId());
         event.setClienteId(reserva.getClienteId());
         event.setCodigoReserva(reserva.getCodigoReserva());
-        event.setCodigoVoo(reserva.getCodigoVoo());       
-        event.setQuantidade(reserva.getQuantidade());  
+        event.setCodigoVoo(reserva.getCodigoVoo());
+        event.setQuantidade(reserva.getQuantidade()); 
+
         System.out.println("=== Created Event ===");
         System.out.println(event.toString());
         return event;
     }
+
+	public EventType getTipo() {
+		return tipo;
+	}
+
+	public void setTipo(EventType tipo) {
+		this.tipo = tipo;
+	}
 
 	public Long getId() {
 		return id;
@@ -72,20 +73,20 @@ public class ReservaEvent implements Serializable {
 		this.dataHora = dataHora;
 	}
 
-	public String getAeroportoOrigemCod() {
-		return aeroportoOrigemCod;
+	public Aeroporto getAeroportoOrigem() {
+		return aeroportoOrigem;
 	}
 
-	public void setAeroportoOrigemCod(String aeroportoOrigemCod) {
-		this.aeroportoOrigemCod = aeroportoOrigemCod;
+	public void setAeroportoOrigem(Aeroporto aeroportoOrigem) {
+		this.aeroportoOrigem = aeroportoOrigem;
 	}
 
-	public String getAeroportoDestinoCod() {
-		return aeroportoDestinoCod;
+	public Aeroporto getAeroportoDestino() {
+		return aeroportoDestino;
 	}
 
-	public void setAeroportoDestinoCod(String aeroportoDestinoCod) {
-		this.aeroportoDestinoCod = aeroportoDestinoCod;
+	public void setAeroportoDestino(Aeroporto aeroportoDestino) {
+		this.aeroportoDestino = aeroportoDestino;
 	}
 
 	public Double getValor() {
@@ -96,11 +97,11 @@ public class ReservaEvent implements Serializable {
 		this.valor = valor;
 	}
 
-	public Integer getMilhas() {
+	public Double getMilhas() {
 		return milhas;
 	}
 
-	public void setMilhas(Integer milhas) {
+	public void setMilhas(Double milhas) {
 		this.milhas = milhas;
 	}
 
@@ -128,22 +129,6 @@ public class ReservaEvent implements Serializable {
 		this.clienteId = clienteId;
 	}
 
-	public String getCodigoReserva() {
-		return codigoReserva;
-	}
-
-	public void setCodigoReserva(String codigoReserva) {
-		this.codigoReserva = codigoReserva;
-	}
-
-	public EventType getTipo() {
-		return tipo;
-	}
-
-	public void setTipo(EventType tipo) {
-		this.tipo = tipo;
-	}
-
 	public String getCodigoVoo() {
 		return codigoVoo;
 	}
@@ -152,12 +137,23 @@ public class ReservaEvent implements Serializable {
 		this.codigoVoo = codigoVoo;
 	}
 
-	public Long getQuantidade() {
+	public Integer getQuantidade() {
 		return quantidade;
 	}
 
-	public void setQuantidade(Long quantidade) {
+	public void setQuantidade(Integer quantidade) {
 		this.quantidade = quantidade;
 	}
 
+	public String getCodigoReserva() {
+		return codigoReserva;
+	}
+
+	public void setCodigoReserva(String codigoReserva) {
+		this.codigoReserva = codigoReserva;
+	}
+
+	public static long getSerialversionuid() {
+		return serialVersionUID;
+	}
 }

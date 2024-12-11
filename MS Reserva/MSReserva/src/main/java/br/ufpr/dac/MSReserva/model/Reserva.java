@@ -18,25 +18,51 @@ public class Reserva {
     @Column(name = "data_hora")
     private LocalDateTime dataHora;
     
-    @Column(name = "aeroporto_origem_Cod")
-    private String aeroportoOrigemCod;
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "nome", column = @Column(name = "aeroporto_origem_nome")),
+        @AttributeOverride(name = "codigo", column = @Column(name = "aeroporto_origem_codigo")),
+        @AttributeOverride(name = "cidade", column = @Column(name = "aeroporto_origem_cidade")),
+        @AttributeOverride(name = "estado", column = @Column(name = "aeroporto_origem_estado")),
+        @AttributeOverride(name = "pais", column = @Column(name = "aeroporto_origem_pais"))
+    })
+    private Aeroporto aeroportoOrigem;
     
-    @Column(name = "aeroporto_destino_Cod")
-    private String aeroportoDestinoCod;
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "nome", column = @Column(name = "aeroporto_destino_nome")),
+        @AttributeOverride(name = "codigo", column = @Column(name = "aeroporto_destino_codigo")),
+        @AttributeOverride(name = "cidade", column = @Column(name = "aeroporto_destino_cidade")),
+        @AttributeOverride(name = "estado", column = @Column(name = "aeroporto_destino_estado")),
+        @AttributeOverride(name = "pais", column = @Column(name = "aeroporto_destino_pais"))
+    })
+    private Aeroporto aeroportoDestino;
     
+    @Column(name = "codigo_voo")
     private String codigoVoo;
-
+    
+    @Column(name = "valor")
     private Double valor;
-    private Integer milhas;
+    
+    @Column(name = "milhas")
+    private Double milhas;
+    
+    @Column(name = "codigo_reserva")
     private String codigoReserva;
-    private Long quantidade;
-
+    
+    @Column(name = "quantidade")
+    private Integer quantidade;
+    
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private StatusReserva status;
-
+    
+    @Column(name = "voo_id")
     private Long vooId;
+    
+    @Column(name = "cliente_id")
     private Long clienteId;
-
+    
     @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<HistoricoAlteracaoEstado> historicoAlteracaoEstado = new ArrayList<>();
     
@@ -48,8 +74,8 @@ public class Reserva {
         return new ReservaDTO(
             id,
             dataHora,
-            aeroportoOrigemCod,
-            aeroportoDestinoCod,
+            aeroportoOrigem,
+            aeroportoDestino,
             valor,
             milhas,
             status.toString(),
@@ -68,17 +94,11 @@ public class Reserva {
     public LocalDateTime getDataHora() { return dataHora; }
     public void setDataHora(LocalDateTime dataHora) { this.dataHora = dataHora; }
 
-    public String getAeroportoOrigemCod() { return aeroportoOrigemCod; }
-    public void setAeroportoOrigemCod(String aeroportoOrigemCod) { this.aeroportoOrigemCod = aeroportoOrigemCod; }
-
-    public String getAeroportoDestinoCod() { return aeroportoDestinoCod; }
-    public void setAeroportoDestinoCod(String aeroportoDestinoCod) { this.aeroportoDestinoCod = aeroportoDestinoCod; }
-
     public Double getValor() { return valor; }
     public void setValor(Double valor) { this.valor = valor; }
 
-    public Integer getMilhas() { return milhas; }
-    public void setMilhas(Integer milhas) { this.milhas = milhas; }
+    public Double getMilhas() { return milhas; }
+    public void setMilhas(Double milhas) { this.milhas = milhas; }
     
     public String getCodigoReserva() { return codigoReserva; }
 	public void setCodigoReserva(String codigoReserva) { this.codigoReserva = codigoReserva; }
@@ -110,11 +130,27 @@ public class Reserva {
 		this.codigoVoo = codigoVoo;
 	}
 
-	public Long getQuantidade() {
+	public Integer getQuantidade() {
 		return quantidade;
 	}
 
-	public void setQuantidade(Long quantidade) {
+	public void setQuantidade(Integer quantidade) {
 		this.quantidade = quantidade;
+	}
+
+	public Aeroporto getAeroportoOrigem() {
+		return aeroportoOrigem;
+	}
+
+	public void setAeroportoOrigem(Aeroporto aeroportoOrigem) {
+		this.aeroportoOrigem = aeroportoOrigem;
+	}
+
+	public Aeroporto getAeroportoDestino() {
+		return aeroportoDestino;
+	}
+
+	public void setAeroportoDestino(Aeroporto aeroportoDestino) {
+		this.aeroportoDestino = aeroportoDestino;
 	}
 }

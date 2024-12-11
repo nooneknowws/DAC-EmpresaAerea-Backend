@@ -2,7 +2,6 @@ package br.ufpr.dac.MSReserva.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-
 import br.ufpr.dac.MSReserva.dto.HistoricoAlteracaoEstadoDTO;
 
 @Entity
@@ -25,7 +24,8 @@ public class HistoricoAlteracaoEstado {
 
     public HistoricoAlteracaoEstado() {}
 
-    public HistoricoAlteracaoEstado(Reserva reserva, LocalDateTime dataHoraAlteracao, StatusReserva estadoOrigem, StatusReserva estadoDestino) {
+    public HistoricoAlteracaoEstado(Reserva reserva, LocalDateTime dataHoraAlteracao, 
+                                   StatusReserva estadoOrigem, StatusReserva estadoDestino) {
         this.reserva = reserva;
         this.dataHoraAlteracao = dataHoraAlteracao;
         this.estadoOrigem = estadoOrigem;
@@ -36,8 +36,8 @@ public class HistoricoAlteracaoEstado {
         return new HistoricoAlteracaoEstadoDTO(
             id,
             dataHoraAlteracao,
-            estadoOrigem.name(),
-            estadoDestino.name()
+            estadoOrigem != null ? estadoOrigem.name() : null,
+            estadoDestino != null ? estadoDestino.name() : null
         );
     }
 
