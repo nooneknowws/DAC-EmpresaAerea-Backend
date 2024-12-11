@@ -14,11 +14,5 @@ subir_api() {
   echo "API iniciada"
 }
 
-gerar_imagens() {
-  # AINDA A SER FINALIZADO
-  docker compose up
-}
-
-gerar_imagens
 subir_bancos
 subir_api
