@@ -21,10 +21,23 @@ instala_postgres() {
   echo "PostgreSQL instalado com sucesso!"
 }
 
+popula_postgres() {
+  echo "Populando PostgreSQL..."
+  docker exec -i my-postgres psql -U postgres < ./dac-postgres.sql
+  echo "PostgreSQL populado com sucesso!"
+}
+
 instalar_bancos() {
   instala_rabbit
   instala_mongo
   instala_postgres
 }
 
+preenche_bancos() {
+  # espera 6 segundos para garantir que os bancos estão on
+  sleep 6
+  popula_postgres
+}
+
 instalar_bancos
+preenche_bancos
