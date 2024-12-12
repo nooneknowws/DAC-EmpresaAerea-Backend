@@ -1,17 +1,16 @@
 package br.ufpr.dac.MSAuth.model;
 
+
+import java.util.Date;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "auth_sessions")
 public class AuthSession {
 	
-    public AuthSession() {
-		super();
-	}
-
-	public AuthSession(String id, String userId, String email, String token, String perfil, String statusFunc,
-			Long createdAt) {
+    public AuthSession(String id, String userId, String email, String token, String perfil, String statusFunc,
+			String refreshToken, Date lastActivity, Long createdAt) {
 		super();
 		this.id = id;
 		this.userId = userId;
@@ -19,8 +18,15 @@ public class AuthSession {
 		this.token = token;
 		this.perfil = perfil;
 		this.statusFunc = statusFunc;
+		this.refreshToken = refreshToken;
+		this.lastActivity = lastActivity;
 		this.createdAt = createdAt;
 	}
+
+	public AuthSession() {
+		super();
+	}
+	
 
 	@Id
     private String id;
@@ -29,15 +35,18 @@ public class AuthSession {
     private String token;
     private String perfil;
     private String statusFunc;
+    private String refreshToken;
+    private Date lastActivity;
     private Long createdAt;
 
-    public AuthSession(String userId, String email, String token, String perfil, String statusFunc) {
-        this.userId = userId;
+    public AuthSession(String id, String email, String token, String refreshToken, String perfil, String statusFunc, Date lastActivity) {
+        this.id = id;
         this.email = email;
         this.token = token;
+        this.refreshToken = refreshToken;
         this.perfil = perfil;
         this.statusFunc = statusFunc;
-        this.createdAt = System.currentTimeMillis();
+        this.lastActivity = new Date();
     }
 
 	public String getId() {
@@ -95,5 +104,20 @@ public class AuthSession {
 	public void setCreatedAt(Long createdAt) {
 		this.createdAt = createdAt;
 	}
+	 public String getRefreshToken() {
+	        return refreshToken;
+	    }
+	    
+	    public void setRefreshToken(String refreshToken) {
+	        this.refreshToken = refreshToken;
+	    }
+	    
+	    public Date getLastActivity() {
+	        return lastActivity;
+	    }
+	    
+	    public void setLastActivity(Date lastActivity) {
+	        this.lastActivity = lastActivity;
+	    }
 
 }

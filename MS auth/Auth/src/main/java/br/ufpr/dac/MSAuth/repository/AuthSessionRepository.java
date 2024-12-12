@@ -9,4 +9,5 @@ public interface AuthSessionRepository extends MongoRepository<AuthSession, Stri
     Optional<AuthSession> findByToken(String token);
     Optional<AuthSession> findByEmail(String email);
     void deleteByToken(String token);
+    Optional<AuthSession> findByRefreshToken(String refreshToken);
 }

@@ -14,10 +14,10 @@ const nodemailer = require("nodemailer");
 
 app.use(
   cors({
-    origin: ["http://localhost:4200"], 
+    origin: ["http://localhost:4200"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "x-access-token", "Authorization"],
-    credentials: true, 
+    allowedHeaders: ["Content-Type", "x-access-token", "Authorization", "refresh-token"],
+    credentials: true,
   })
 );
 
@@ -26,7 +26,10 @@ app.use(bodyParser.json());
 
 const authServiceProxy = httpProxy("http://localhost:5000", {
   proxyReqPathResolver: function (req) {
-    return req.path === "/login" ? "/login" : "/logout";
+    if (req.path === "/login") return "/login";
+    if (req.path === "/logout") return "/logout";
+    if (req.path === "/refresh-token") return "/refresh-token";
+    return req.path;
   },
   proxyReqBodyDecorator: function (bodyContent, srcReq) {
     try {
@@ -40,11 +43,19 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
       }
 
       if (srcReq.path === "/logout") {
+        console.log("Processing logout request with token:", bodyContent.token);
         const logoutRequest = {
           token: bodyContent.token,
         };
-        console.log("Processing logout request");
         return logoutRequest;
+      }
+
+      if (srcReq.path === "/refresh-token") {
+        const refreshTokenRequest = {
+          refreshToken: bodyContent.refreshToken
+        };
+        console.log("Processing refresh token request");
+        return refreshTokenRequest;
       }
 
       return bodyContent;
@@ -56,6 +67,12 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
   proxyReqOptDecorator: function (proxyReqOpts, srcReq) {
     proxyReqOpts.headers["Content-Type"] = "application/json";
     proxyReqOpts.method = srcReq.method;
+    
+    const token = srcReq.headers["x-access-token"];
+    if (token) {
+      proxyReqOpts.headers["x-access-token"] = token;
+    }
+    
     return proxyReqOpts;
   },
   userResDecorator: function (proxyRes, proxyResData, userReq, userRes) {
@@ -64,6 +81,9 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
 
     try {
       const jsonResponse = JSON.parse(responseString);
+    
+      userRes.status(proxyRes.statusCode);
+      
       return jsonResponse;
     } catch (error) {
       console.log("Error parsing response:", error);
@@ -71,6 +91,7 @@ const authServiceProxy = httpProxy("http://localhost:5000", {
     }
   },
 });
+
 
 const voosServiceProxy = httpProxy("http://localhost:5001");
 const reservasServiceProxy = httpProxy("http://localhost:5005");
@@ -152,7 +173,7 @@ function verifyJWT(req, res, next) {
     next();
   });
 }
-app.get("/session/check", (req, res, next) => {
+app.get("/session/check", verifyJWT, (req, res, next,)=> {
   const token = req.headers["x-access-token"];
 
   if (!token) {
@@ -208,12 +229,30 @@ app.post("/login", (req, res, next) => {
 });
 
 app.post("/logout", (req, res, next) => {
-  if (!req.body.token) {
+  const token = req.headers["x-access-token"] || req.body.token;
+  
+  if (!token) {
     return res.status(400).json({
       status: "error",
-      message: "Token não fornecido no corpo da requisição",
+      message: "Token não fornecido no corpo da requisição ou headers",
     });
   }
+  req.body.token = token;
+  req.headers["x-access-token"] = token;
+
+  console.log("Logout request received with token:", token);
+  authServiceProxy(req, res, next);
+});
+app.options("/logout", cors());
+
+app.post("/refresh-token", (req, res, next) => {
+  if (!req.body.refreshToken) {
+    return res.status(400).json({
+      status: "error",
+      message: "Refresh token is required"
+    });
+  }
+  
   authServiceProxy(req, res, next);
 });
 
@@ -236,26 +275,26 @@ app.post("/api/aeroportos", verifyJWT, (req, res, next) => {
   });
 });
 // Rota para listar todos os voos (GET)
-app.get("/voos", (req, res, next) => {
+app.get("/voos", verifyJWT, (req, res, next) => {
   // TODO: Implementar a verificação do token JWT (verifyJWT) na chamada
   voosServiceProxy(req, res, next);
 });
 
 // Rota para listar um voo pelo ID (GET)
-app.get("/voos/:id", (req, res, next) => {
+app.get("/voos/:id", verifyJWT, (req, res, next) => {
   voosServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/voos/${req.params.id}`,
   });
 });
 
 // Rota para inserir um novo voo (POST)
-app.post("/voos", (req, res, next) => {
+app.post("/voos", verifyJWT, (req, res, next) => {
   voosServiceProxy(req, res, next, {
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
 // ROTA PARA REALIZAR O VOO
-app.patch("/voos/:id/status", cors(), (req, res, next) => {
+app.patch("/voos/:id/status", cors(), verifyJWT, (req, res, next) => {
   console.log('Received PATCH request for flight status update:', {
     flightId: req.params.id,
     status: req.query.status
@@ -271,7 +310,7 @@ app.patch("/voos/:id/status", cors(), (req, res, next) => {
   });
 });
 //FILTRO DE VOOS POR AEROPORTO ORIGEM/DESTINO
-app.get("/voos/filter", (req, res, next) => {
+app.get("/voos/filter",  verifyJWT, (req, res, next) => {
   voosServiceProxy(req, res, {
     proxyReqPathResolver: (req) => {
       return `/voos/filter?origem=${req.query.origem}&destino=${req.query.destino}`;
@@ -292,7 +331,7 @@ app.get("/voos/filter", (req, res, next) => {
   });
 });
 // ROTA PARA CANCELAR O VOO
-app.patch("/voos/:id/cancelar", cors(), (req, res, next) => {
+app.patch("/voos/:id/cancelar", cors(), verifyJWT, (req, res, next) => {
   console.log('Received PATCH request for flight cancellation:', {
     flightId: req.params.id
   });
@@ -556,7 +595,7 @@ app.post("/funcionarios/cadastro", mailServer, (req, res, next) => {
 app.get("/funcionarios", verifyJWT, (req, res, next) => {
   FuncionarioServiceProxy(req, res, next);
 });
-app.get("/funcionarios/:id", (req, res, next) => {
+app.get("/funcionarios/:id", verifyJWT, (req, res, next) => {
   console.log(`Receiving request for funcionario ID: ${req.params.id}`);
 
   FuncionarioServiceProxy(req, res, next, {
@@ -574,14 +613,14 @@ app.get("/funcionarios/:id", (req, res, next) => {
     },
   });
 });
-app.put("/funcionarios/edit/:id", (req, res, next) => {
+app.put("/funcionarios/edit/:id", verifyJWT, (req, res, next) => {
   FuncionarioServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/funcionarios/edit/${req.params.id}`,
 
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
   });
 });
-app.put("/funcionarios/status/:id", (req, res, next) => {
+app.put("/funcionarios/status/:id", verifyJWT, (req, res, next) => {
   FuncionarioServiceProxy(req, res, next, {
     proxyReqPathResolver: (req) => `/funcionarios/status/${req.params.id}`,
     proxyReqBodyDecorator: (bodyContent) => bodyContent,
