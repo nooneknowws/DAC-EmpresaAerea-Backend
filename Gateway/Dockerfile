@@ -6,5 +6,3 @@ COPY . .
 
 EXPOSE 3000
 
-# Comando para rodar a aplicação
-# CMD ["node", "start"]

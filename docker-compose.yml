@@ -44,7 +44,6 @@ services:
     image: voos
     container_name: ms-voos
 
-
   gateway:
     build:
       context: ./Gateway
@@ -54,13 +53,11 @@ services:
     image: api
     container_name: api-gateway
 
-  # saga:
-  #   build:
-  #     context: ./SAGA
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5010:5010"
-
-# networks:
-#   default:
-#     driver: bridge
+  saga:
+    build:
+      context: ./SAGA
+      dockerfile: Dockerfile
+    ports:
+      - "5010:5010"
+    image: saga
+    container_name: dac-saga

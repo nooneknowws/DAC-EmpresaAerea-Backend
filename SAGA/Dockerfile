@@ -17,4 +17,4 @@ WORKDIR /app
 
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-EXPOSE 5003
+EXPOSE 5010
