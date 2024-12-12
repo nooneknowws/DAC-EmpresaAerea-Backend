@@ -7,12 +7,10 @@ subir_bancos() {
   echo "Todos os bancos foram iniciados."
 }
 
-subir_api() {
-  echo "Subindo API..."
-  cd ./Gateway/
-  node gateway.js
-  echo "API iniciada"
+gerar_imagens() {
+  docker compose up
 }
 
 subir_bancos
-subir_api
+gerar_imagens
+
